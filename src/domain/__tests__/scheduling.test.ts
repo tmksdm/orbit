@@ -18,12 +18,12 @@ const at = "2026-10-08T00:00:00Z";
 const approvedCases: [ContactStrategy, Initiator, Outcome, number][] = [
   ["maintain", "me", "good", 1.4],
   ["maintain", "me", "short", 1.7],
-  ["maintain", "me", "no_reply", 2.2],
+  ["maintain", "me", "no_reply", 2.0],
   ["maintain", "them", "good", 1.0],
   ["maintain", "them", "short", 1.0],
   ["grow", "me", "good", 1.4],
   ["grow", "me", "short", 1.7],
-  ["grow", "me", "no_reply", 2.2],
+  ["grow", "me", "no_reply", 2.0],
   ["grow", "them", "good", 0.8],
   ["grow", "them", "short", 1.0],
   ["grow", "mutual", "good", 0.8],
@@ -80,7 +80,7 @@ describe("производные правила (выведены из утве�
         outcome: "no_reply",
         currentIntervalDays: 10,
       }),
-    ).toBe(22);
+    ).toBe(20);
   });
 
   test("grow + mutual + short не сокращает интервал", () => {
@@ -102,20 +102,19 @@ describe("производные правила (выведены из утве�
         outcome: "no_reply",
         currentIntervalDays: 10,
       }),
-    ).toBe(22);
+    ).toBe(20);
   });
 });
 
 describe("повторный no_reply — накопление", () => {
-  test("10 → 22 → 48 → 106 (каждый no_reply умножает текущий интервал)", () => {
+  test("2 → 4 → 8 → 16 → 32 → 64 (каждый no_reply удваивает текущий интервал)", () => {
     let contact = createContact({
       id: "c1",
       name: "Аня",
       strategy: "grow",
-      recommendedIntervalDays: 10,
     });
     const seen: number[] = [];
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       contact = recordInteraction(contact, {
         initiator: "me",
         outcome: "no_reply",
@@ -123,7 +122,7 @@ describe("повторный no_reply — накопление", () => {
       });
       seen.push(contact.recommendedIntervalDays);
     }
-    expect(seen).toEqual([22, 48, 106]);
+    expect(seen).toEqual([4, 8, 16, 32, 64]);
   });
 });
 
@@ -142,13 +141,13 @@ describe("верхней границы нет (maxIntervalDays удалён)", 
         occurredAt: at,
       });
     }
-    // 10 → 22 → 48 → 106 → 233 → 513
-    expect(contact.recommendedIntervalDays).toBe(513);
+    // 10 → 20 → 40 → 80 → 160 → 320
+    expect(contact.recommendedIntervalDays).toBe(320);
   });
 });
 
 describe("очень большие интервалы", () => {
-  test("10 000 → 22 000 без потери точности", () => {
+  test("10 000 → 20 000 без потери точности", () => {
     expect(
       computeNextIntervalDays({
         strategy: "grow",
@@ -156,7 +155,7 @@ describe("очень большие интервалы", () => {
         outcome: "no_reply",
         currentIntervalDays: 10_000,
       }),
-    ).toBe(22_000);
+    ).toBe(20_000);
   });
 
   test("миллион дней умножается корректно", () => {
@@ -209,21 +208,21 @@ describe("minIntervalDays", () => {
 });
 
 describe("первое взаимодействие и отсутствие истории", () => {
-  test("новый контакт получает стартовый интервал (не фактический промежуток)", () => {
+  test("новый контакт получает approved стартовый интервал (2)", () => {
     const contact = createContact({ id: "c3", name: "Вера", strategy: "grow" });
     expect(contact.recommendedIntervalDays).toBe(INITIAL_INTERVAL_DAYS);
-    expect(contact.recommendedIntervalDays).toBe(7);
+    expect(contact.recommendedIntervalDays).toBe(2);
   });
 
-  test("первое взаимодействие считает от стартового интервала, даже если человек написал через 2 дня", () => {
+  test("первое взаимодействие считает от стартового интервала, а не от фактического промежутка", () => {
     let contact = createContact({ id: "c3", name: "Вера", strategy: "grow" });
     contact = recordInteraction(contact, {
-      initiator: "them",
+      initiator: "me",
       outcome: "good",
       occurredAt: at,
     });
-    // 7 × 0.8 = 5.6 → 6; база — рекомендуемый интервал (7), а не фактические 2 дня
-    expect(contact.recommendedIntervalDays).toBe(6);
+    // база — рекомендуемый интервал (2), а не фактический промежуток: 2 × 1.4 = 2.8 → 3
+    expect(contact.recommendedIntervalDays).toBe(3);
   });
 
   test("отсутствие истории — детерминированный дефолт, ошибка не бросается", () => {

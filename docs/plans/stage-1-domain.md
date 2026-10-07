@@ -1,8 +1,8 @@
 # План Stage 1 — Domain model и scheduling algorithm
 
-Статус: **выполнен (Stage 1 реализован); возвращён на внешнее ревью после правок
-(2026-10-08).** Решения владельца зафиксированы в `docs/DOMAIN.md`; этот план —
-рабочая постановка Stage 1.
+Статус: **approved (2026-10-08); Stage 1 актуализирован approved product decision
+(стартовый интервал = 2, `no_reply` ×2.0).** Решения владельца зафиксированы в
+`docs/DOMAIN.md`; этот план — рабочая постановка Stage 1.
 
 ## Goal
 
@@ -32,14 +32,13 @@ UI; SQLite; repositories; notifications; backend; authentication; cloud sync; AI
   промежуток между взаимодействиями).
 - Множители — по утверждённой таблице (`docs/DOMAIN.md`); производные ячейки:
   `maintain + mutual` как them (×1.0), `grow + mutual + short` ×1.0,
-  `no_reply` ×2.2 при любом initiator.
+  `no_reply` ×2.0 при любом initiator.
 - Каждый новый `no_reply` умножает текущий интервал ещё раз (накопление).
 - `maxIntervalDays` НЕ реализуется — рост без потолка (решение владельца).
 - Результат не ниже `minIntervalDays` (по умолчанию 2).
 - Дробные дни — `Math.round` до целых.
-- Стартовый интервал контакта без истории — временный implementation default
-  `INITIAL_INTERVAL_DAYS = 7`; **не утверждён владельцем** (открытое решение —
-  см. Risks и `docs/DOMAIN.md`, «Незакрытые решения»).
+- Стартовый интервал контакта без истории — approved `INITIAL_INTERVAL_DAYS = 2`
+  (решение владельца 2026-10-08).
 - Функции детерминированы: без часов, случайности и I/O.
 - Contact — состояние связи (`id`, `name`, `note?`, `strategy`, `minIntervalDays`,
   `recommendedIntervalDays`); история Interaction — отдельная domain-сущность,
@@ -59,7 +58,7 @@ UI; SQLite; repositories; notifications; backend; authentication; cloud sync; AI
 - grow + me + good / short / no_reply;
 - grow + them + good / short;
 - grow + mutual + good;
-- повторные no_reply (накопление: 10 → 22 → 48 → 106);
+- повторные no_reply (накопление: 2 → 4 → 8 → 16 → 32 → 64);
 - отсутствие maxIntervalDays (рост выше 45 и дальше);
 - очень большие интервалы;
 - minIntervalDays (дефолт и кастомная граница);
@@ -75,8 +74,8 @@ UI; SQLite; repositories; notifications; backend; authentication; cloud sync; AI
 
 ## Risks
 
-- Стартовый интервал 7 дней — временный implementation default, не утверждён
-  владельцем; 7 не является продуктовым правилом (открытое решение).
+- Стартовый интервал 2 дня — approved product rule (2026-10-08); отдельный риск
+  снят. Значение совпадает с `minIntervalDays` по умолчанию.
 - Производные ячейки (mutual) выведены из утверждённых правил — помечены в
   `docs/DOMAIN.md`, проверить на ревью.
 

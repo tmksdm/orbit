@@ -6,13 +6,13 @@ Stage 1 — Domain Model & Scheduling Algorithm
 
 ## Status
 
-Правки по замечаниям внешнего ревью внесены; Stage 1 возвращён на внешнее ревью
-(2026-10-08). Stage 2 не начат.
+Approved (2026-10-08) и **актуализирован approved product decision** того же дня
+(стартовый интервал = 2 дня; множитель `no_reply` ×2.0). Проверки зелёные.
+Stage 2 не начат.
 
 ## Summary
 
-Stage 0 approved владельцем 2026-10-08. Затем реализован доменный слой Stage 1 —
-чистый TypeScript без React / Expo / SQLite / UI:
+Доменный слой Stage 1 — чистый TypeScript без React / Expo / SQLite / UI:
 
 - `src/domain/types.ts` — `ContactStrategy`, `Initiator`, `Outcome`,
   `Interaction`, `Contact` (с необязательным `note?`);
@@ -24,23 +24,25 @@ Stage 0 approved владельцем 2026-10-08. Затем реализова�
 - `src/domain/__tests__/scheduling.test.ts` — 30 domain-тестов, покрывающих все
   обязательные кейсы плана Stage 1.
 
-Внешнее ревью вернуло **CHANGES REQUESTED** (4 замечания) — все закрыты, см.
-«Правки по внешнему ревью». Утверждённые множители, `min = 2`, отсутствие
-`maxIntervalDays` и накопительный `no_reply` не менялись.
+Внешнее ревью вернуло CHANGES REQUESTED (4 замечания); замечания закрыты, и
+Stage 1 был принят (коммит `714e0686`). Затем владелец принял продуктовое
+уточнение для MVP (см. ниже) — Stage 1 актуализирован.
 
-## Правки по внешнему ревью (2026-10-08)
+## Product decision (approved 2026-10-08)
 
-| № | Замечание | Что сделано | Файлы |
-|---|---|---|---|
-| 1 | `INITIAL_INTERVAL_DAYS = 7` выдавался за approved Stage 1 | 7 переформулирован как временный implementation default / открытое решение владельца (не approved product rule); добавлен раздел «Незакрытые решения»; план, отчёт и `PROJECT_STATE.md` согласованы | `docs/DOMAIN.md`, `docs/plans/stage-1-domain.md`, `docs/PROJECT_STATE.md`, `REVIEW_REPORT.md` |
-| 2 | Модель Contact и `DOMAIN.md` расходились (`note`, история) | Contact = `id, name, note?, strategy, minIntervalDays, recommendedIntervalDays`; история Interaction — отдельная domain-сущность (не поле Contact); `DOMAIN.md` и JSDoc согласованы; `recordInteraction` не хранит событие, и это объяснено (`occurredAt` принадлежит Interaction) | `src/domain/types.ts`, `src/domain/contact.ts`, `docs/DOMAIN.md` |
-| 3 | `README.md` — устаревший «Stage 0» и «продуктовые функции ещё не реализованы» | README переведён на Stage 1 (статус и описание слоя `domain`) | `README.md` |
-| 4 | Неверное число тестов | Исправлено: `scheduling.test.ts` — **30** domain-тестов; полный `npm test` — **31** тест (30 domain + 1 Stage-0 smoke) | `REVIEW_REPORT.md` |
+Упрощение механики для MVP, решения владельца:
 
-Дополнительно (консистентность, продуктовых правил не меняет): убран lint-warning
-`@typescript-eslint/array-type` в тесте (`T[]` вместо `Array<T>`); в `AGENTS.md`
-правило 1 больше не хардкодит устаревшую стадию, а ссылается на
-`docs/PROJECT_STATE.md`.
+| Что | Было | Стало |
+|---|---|---|
+| Стартовый интервал нового контакта `INITIAL_INTERVAL_DAYS` | 7 (временный default, открытое решение) | **2 — approved product rule** |
+| Множитель `no_reply` | ×2.2 | **×2.0** (при любом initiator и обеих стратегиях; накопительно — применяется к текущему recommended interval) |
+
+Ожидаемая последовательность: `2 → 4 → 8 → 16 → 32 → 64 → …`.
+
+Смысл: если пользователь инициирует, а в ответ тишина, Orbit постепенно и
+прозрачно увеличивает дистанцию. Для MVP приоритет — простота и объяснимость.
+Остальные утверждённые правила Stage 1 (множители 1.4 / 1.7 / 1.0 / 0.8,
+`minIntervalDays = 2`, отсутствие `maxIntervalDays`) не менялись.
 
 ## Requirements coverage
 
@@ -48,35 +50,33 @@ Stage 0 approved владельцем 2026-10-08. Затем реализова�
 |---|---|
 | Domain types: Contact / Interaction / ContactStrategy / Initiator / Outcome | implemented (`src/domain/types.ts`) |
 | Scheduling algorithm (чистые функции) | implemented (`src/domain/scheduling.ts`, `contact.ts`) |
-| Финальные множители (11 утверждённых ячеек) | implemented (таблица в коде = таблица в `DOMAIN.md`) |
-| Повторный no_reply — накопление (10→22→48→106) | implemented + тест |
-| Верхней границы нет (без maxIntervalDays) | implemented + тесты (рост 10→513 за 5 no_reply) |
+| Утверждённые множители (11 ячеек) | implemented (таблица в коде = таблица в `DOMAIN.md`) |
+| `no_reply` ×2.0, приоритет и накопление (2→4→8→16→32→64) | implemented + тест |
+| Верхней границы нет (без maxIntervalDays) | implemented + тесты (рост 10→320 за 5 no_reply) |
 | minIntervalDays = 2 (и кастомная граница) | implemented + тесты |
-| База множителя — current recommended interval | implemented + тест («человек написал через 2 дня» ≠ база) |
-| Первое взаимодействие / отсутствие истории | implemented (стартовый интервал 7 — временный default) + тесты |
+| База множителя — current recommended interval | implemented + тест (база ≠ фактический промежуток) |
+| Стартовый интервал = 2 (approved) | implemented + тесты |
 | Детерминированность | implemented + тесты (и иммутабельность) |
 | Unit tests — обязательный список плана | implemented (30 domain-тестов) |
-| Обновление domain-документации | implemented (`DOMAIN.md`, `PRODUCT.md`, план Stage 1) |
+| Обновление domain-документации | implemented (`DOMAIN.md`, план Stage 1) |
 | UI / SQLite / repositories / notifications / backend | not implemented — вне scope Stage 1 |
 
-## Changed files (правки по внешнему ревью)
+## Changed files (правки этого уточнения)
 
-- `README.md` — статус Stage 1 (был Stage 0); уточнён слой `domain`.
-- `AGENTS.md` — правило 1 ссылается на `docs/PROJECT_STATE.md` вместо хардкода стадии.
-- `docs/DOMAIN.md` — модель Contact и история Interaction; раздел «Незакрытые решения» (стартовый интервал); правила множителей — без изменений.
-- `docs/plans/stage-1-domain.md` — статус (выполнен, на ревью); стартовый интервал — временный default; модель Contact/история.
-- `src/domain/types.ts` — Contact с `note?`; JSDoc про Interaction и историю.
-- `src/domain/contact.ts` — `ContactInput.note?`; JSDoc `recordInteraction` (событие не хранится в Contact).
-- `src/domain/__tests__/scheduling.test.ts` — исправлен lint-warning (`T[]`); число тестов не менялось (30).
-- `REVIEW_REPORT.md` — этот отчёт (обновлён после ревью).
-- `docs/PROJECT_STATE.md` — журнал (правки по ревью; исправлено число тестов).
+- `src/domain/scheduling.ts` — `INITIAL_INTERVAL_DAYS = 2`; `no_reply` ×2.0 (6 ячеек); обновлён docstring.
+- `src/domain/__tests__/scheduling.test.ts` — тесты под ×2.0 и старт = 2; накопление `2→4→8→16→32→64`.
+- `docs/DOMAIN.md` — таблица `no_reply` ×2.0; раздел «Повторный no_reply»; стартовый интервал = 2 (approved); удалён раздел «Незакрытые решения».
+- `docs/plans/stage-1-domain.md` — статус approved; ×2.0; старт = 2; обязательный тест накопления; Risks.
+- `docs/plans/stage-2-data.md` — синхронизирована ссылка на утверждённый стартовый интервал (статус плана остаётся Draft).
+- `REVIEW_REPORT.md` — этот отчёт (актуализирован).
+- `docs/PROJECT_STATE.md` — журнал (product decision; проверенные факты).
 
 ## Architecture
 
 - Слои и направление зависимостей — без изменений (`ARCHITECTURE.md`):
   `app → features → {ui, services, data} → domain`. Domain — основание стека.
-- Domain остаётся независимым от React / Expo / SQLite: продуктовая математика —
-  чистые функции, тестируемые unit-тестами без эмуляторов (30 domain-тестов).
+- Domain независим от React / Expo / SQLite: продуктовая математика — чистые
+  функции, тестируемые unit-тестами (30 domain-тестов).
 - Contact иммутабелен; таблица множителей — экспортируемая константа
   (прозрачность рекомендаций — принцип `PRODUCT.md`).
 - Interaction — отдельная domain-сущность; её историю будет хранить repository
@@ -84,26 +84,26 @@ Stage 0 approved владельцем 2026-10-08. Затем реализова�
 
 ## Domain specification
 
-Текущее понимание (источник — `docs/DOMAIN.md`, решения владельца от 2026-10-08):
+Источник — `docs/DOMAIN.md`, решения владельца от 2026-10-08:
 
-- **maintain** — не терять контакт, не навязываться: инициатива в основном от
-  пользователя → интервал постепенно растёт; инициатива другого — интервал можно
-  сохранить; никогда не сокращает ради сближения.
-- **grow** — сближаться только вслед за взаимностью; желание пользователя само
-  по себе интервал не сокращает.
+- **maintain** — не терять контакт, не навязываться; инициатива пользователя →
+  интервал растёт; инициатива другого — интервал можно сохранить; никогда не
+  сокращает ради сближения.
+- **grow** — сближаться только вслед за взаимностью; `grow + me` сам по себе
+  интервал не сокращает.
 - **initiator** — `me` / `them` / `mutual`; **outcome** — `good` / `short` / `no_reply`.
 - **adaptive interval** — текущий рекомендуемый интервал; база каждого пересчёта.
 - **min interval** — 2 дня (по умолчанию); **max — удалён**, рост без потолка.
+- **Стартовый интервал** нового контакта — 2 дня (approved).
 - **Модель Contact** — `id, name, note?, strategy, minIntervalDays,
-  recommendedIntervalDays`; история Interaction — отдельная коллекция, не поле
-  Contact.
+  recommendedIntervalDays`; история Interaction — отдельная коллекция, не поле Contact.
 
 Подтверждения:
 
-- `grow + them + good` позволяет сокращать интервал (× 0.8; 10 → 8).
-- `grow + me` сам по себе не позволяет сокращать интервал (good → × 1.4).
-- `no_reply` приводит к увеличению интервала (× 2.2, независимо от стратегии;
-  каждый новый no_reply умножает текущий интервал ещё раз: 10 → 22 → 48 → 106).
+- `grow + them + good` сокращает интервал (× 0.8; 10 → 8).
+- `grow + me` сам по себе не сокращает интервал (good → × 1.4).
+- `no_reply` удваивает текущий интервал (× 2.0, независимо от стратегии;
+  2 → 4 → 8 → 16 → 32 → 64).
 
 ## Verification
 
@@ -138,45 +138,39 @@ Tests:       31 passed, 31 total
 - Греп-проверка `src/` — в `src/domain` нет импортов react / expo /
   react-native / sqlite / UI; продуктовых экранов и хранилища не появилось.
 - Сверка таблицы множителей в коде с утверждённой таблицей `docs/DOMAIN.md` —
-  совпадает построчно; производные ячейки помечены в обоих местах.
-- Сверка модели Contact: `types.ts` (`id, name, note?, strategy, min,
-  recommended`) совпадает с описанием в `DOMAIN.md`; история — отдельная сущность.
+  совпадает построчно (`no_reply` ×2.0 в обеих); производные ячейки помечены.
+- Сверка модели Contact: `types.ts` совпадает с описанием в `DOMAIN.md`.
 - Секретов нет, build-артефактов нет.
 
 ## Dependencies
 
 Новые зависимости — **отсутствуют**: домен и тесты написаны на уже установленных
-`typescript`, `jest`, `jest-expo`, `@types/jest`. Лишних зависимостей не добавлено.
+`typescript`, `jest`, `jest-expo`, `@types/jest`.
 
 ## Deviations
 
-- В Contact добавлено необязательное поле `note?` — чтобы модель совпала с
-  описанным в `DOMAIN.md` атрибутом «заметка». Поле не используется алгоритмом
-  (данные, не логика), поэтому новых тестов не потребовалось; число domain-тестов
-  осталось 30 (как указано в замечании 4).
-- История взаимодействий вынесена из Contact в отдельную domain-сущность
-  `Interaction` (замечание 2, вариант «отдельная коллекция, хранится repository»).
-- Стартовый интервал `INITIAL_INTERVAL_DAYS = 7` — временный implementation
-  default, не утверждён владельцем (Open questions).
-- Производные ячейки таблицы (maintain+mutual, grow+mutual+short, no_reply при
-  mutual) выведены из утверждённых правил; зафиксированы в `DOMAIN.md` и тестах.
-- Lint-warning `@typescript-eslint/array-type` исправлен (`T[]`).
+- Стартовый интервал: 7 (временный default) → 2 (approved product rule) —
+  изменение утверждено владельцем 2026-10-08.
+- Множитель `no_reply`: ×2.2 → ×2.0 — утверждено владельцем 2026-10-08.
+- Для теста «первое взаимодействие» выбран `grow + me + good` (×1.4),
+  т.к. при старте = 2 множитель `grow + them + good` (×0.8) упирается в
+  `minIntervalDays` и не показателен.
+- Производные ячейки (maintain+mutual, grow+mutual+short, no_reply при mutual)
+  выведены из утверждённых правил; зафиксированы в `DOMAIN.md` и тестах.
 
 ## Open questions
 
-1. Стартовый интервал нового контакта без истории: сейчас временный default
-   7 дней — подтвердить или задать значение. Владелец не решён; самостоятельно
-   значение не выбирается.
-2. Схема БД / `src/data` (репозитории, миграции) — отдельный Stage 2 или часть
-   следующего этапа (вопрос переносится из Stage 0, решения пока нет).
+1. Схема БД / `src/data` (порты репозиториев, миграции) — вынесено в план
+   `docs/plans/stage-2-data.md` (Draft, ожидает утверждения решений владельцем).
 
 ## Risks / Review focus
 
-- Таблица множителей в `src/domain/scheduling.ts` — сердце продукта; сверена
-  построчно с `docs/DOMAIN.md` (11 ячеек).
-- Модель Contact: добавлен `note?`; история — отдельная сущность, а не поле.
-- Поведение «без потолка»: интервал уходит в сотни дней — оценить как UX для
-  Stage 2+ (напоминания при таком интервале).
+- Таблица множителей в `src/domain/scheduling.ts` — сверена построчно с
+  `docs/DOMAIN.md` (11 ячеек; `no_reply` ×2.0).
+- Стартовый интервал = 2 совпадает с `minIntervalDays` по умолчанию — новый
+  контакт стартует с минимума; проверить, что это ожидаемый UX.
+- Накопление `no_reply` при ×2.0 растёт медленнее, чем при ×2.2 (10 → 320 против
+  513 за 5 no_reply) — ожидаемое следствие упрощения.
 - 30 domain-тестов — первые доменные тесты: оценить стиль/полноту как эталон.
 
 ## Stage boundary
@@ -187,29 +181,27 @@ Tests:       31 passed, 31 total
 
 ## Suggested Git commit
 
-Текущая ветка — `main`, HEAD `c1dcc89`. Правки по внешнему ревью лежат в рабочем
+Текущая ветка — `main`, HEAD `c1dcc89`. Изменения этого уточнения в рабочем
 дереве и НЕ закоммичены — владелец коммитит их после применения патча.
 
 Commit message:
 
 ```text
-fix(domain): address stage 1 review — align contact model and docs
+feat(domain): start interval 2 and no_reply x2.0 (approved mvp decision)
 ```
 
 Команды на ноутбуке после применения патча:
 
 ```bash
-git status
-git diff --ignore-cr-at-eol
-git add README.md AGENTS.md docs/DOMAIN.md docs/plans/stage-1-domain.md \
-        src/domain/types.ts src/domain/contact.ts \
-        src/domain/__tests__/scheduling.test.ts REVIEW_REPORT.md docs/PROJECT_STATE.md
-git commit -m "fix(domain): address stage 1 review — align contact model and docs"
+git add src/domain/scheduling.ts src/domain/__tests__/scheduling.test.ts \
+        docs/DOMAIN.md docs/plans/stage-1-domain.md docs/plans/stage-2-data.md \
+        REVIEW_REPORT.md docs/PROJECT_STATE.md
+git commit -m "feat(domain): start interval 2 and no_reply x2.0 (approved mvp decision)"
 git push
 ```
 
 ## Review handoff
 
-Stage 1 amendments ready for external review.
-Stage 2 not started.
-Waiting for approval.
+Stage 1 approved and actualized by the approved product decision (2026-10-08).
+Stage 2 not started — plan `docs/plans/stage-2-data.md` remains Draft, awaiting
+owner approval of its decisions.
