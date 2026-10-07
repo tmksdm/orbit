@@ -1,7 +1,8 @@
 # План Stage 1 — Domain model и scheduling algorithm
 
-Статус: **approved (2026-10-08), выполняется.** Решения владельца зафиксированы
-в `docs/DOMAIN.md`; этот план — рабочая постановка Stage 1.
+Статус: **выполнен (Stage 1 реализован); возвращён на внешнее ревью после правок
+(2026-10-08).** Решения владельца зафиксированы в `docs/DOMAIN.md`; этот план —
+рабочая постановка Stage 1.
 
 ## Goal
 
@@ -36,8 +37,13 @@ UI; SQLite; repositories; notifications; backend; authentication; cloud sync; AI
 - `maxIntervalDays` НЕ реализуется — рост без потолка (решение владельца).
 - Результат не ниже `minIntervalDays` (по умолчанию 2).
 - Дробные дни — `Math.round` до целых.
-- Стартовый интервал контакта без истории — `INITIAL_INTERVAL_DAYS = 7`.
+- Стартовый интервал контакта без истории — временный implementation default
+  `INITIAL_INTERVAL_DAYS = 7`; **не утверждён владельцем** (открытое решение —
+  см. Risks и `docs/DOMAIN.md`, «Незакрытые решения»).
 - Функции детерминированы: без часов, случайности и I/O.
+- Contact — состояние связи (`id`, `name`, `note?`, `strategy`, `minIntervalDays`,
+  `recommendedIntervalDays`); история Interaction — отдельная domain-сущность,
+  хранится repository на этапе data (не поле Contact).
 
 ## Acceptance criteria
 
@@ -69,8 +75,8 @@ UI; SQLite; repositories; notifications; backend; authentication; cloud sync; AI
 
 ## Risks
 
-- Стартовый интервал 7 дней — дефолт реализации, не утверждён владельцем
-  (открытый вопрос отчёта).
+- Стартовый интервал 7 дней — временный implementation default, не утверждён
+  владельцем; 7 не является продуктовым правилом (открытое решение).
 - Производные ячейки (mutual) выведены из утверждённых правил — помечены в
   `docs/DOMAIN.md`, проверить на ревью.
 

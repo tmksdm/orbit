@@ -8,10 +8,10 @@
 запись журнала = что делаем и куда дальше; затем `AGENTS.md` (правила) и
 `docs/SYNC.md` (обмен файлами, раздел «Новый чат с агентом»).
 
-## Текущее состояние (2026-10-07)
+## Текущее состояние (2026-10-08)
 
-- **Текущий Stage:** Stage 1 — Domain Model & Scheduling Algorithm. Статус: выполнен, ожидает ревью.
-- **Следующий шаг:** внешнее ревью и approval Stage 1; затем — Stage 2 (не начинать без одобрения).
+- **Текущий Stage:** Stage 1 — Domain Model & Scheduling Algorithm. Статус: замечания внешнего ревью устранены, возвращён на внешнее ревью.
+- **Следующий шаг:** повторное внешнее ревью и approval Stage 1; затем — Stage 2 (не начинать без одобрения).
 
 ## Что готово (Stage 0)
 
@@ -22,8 +22,8 @@
   команды `npm run lint`, `npm run typecheck`, `npm test` — проверены, зелёные.
 - Jest + jest-expo + React Native Testing Library; smoke-тест placeholder-экрана
   (`__tests__/index.test.tsx`).
-- Структура слоёв: `src/{domain,data,services,features,ui}` — пустые каталоги с
-  `.gitkeep`, продуктовой логики нет.
+- Структура слоёв: `src/{domain,data,services,features,ui}`; `domain` заполнен
+  на Stage 1, остальные — пустые каталоги с `.gitkeep`.
 - Документация: `AGENTS.md`, `README.md`, `ARCHITECTURE.md`, `docs/PRODUCT.md`,
   `docs/DOMAIN.md`, `docs/DEVELOPMENT.md`, `docs/TESTING.md`, `docs/SYNC.md`,
   ADR `docs/decisions/001-local-first.md`, `docs/plans/TEMPLATE.md`,
@@ -38,9 +38,9 @@
 - Окружение: Node.js 22, npm 10; зависимости установлены из registry.npmjs.org.
 - Стек: Expo SDK 57 (react-native 0.86, react 19.2, typescript ~6.0), expo-router,
   роуты в `src/app`.
-- `npm run lint`, `npm run typecheck`, `npm test` выполняются успешно (2026-10-07).
-- Продуктовая логика (UI контактов, scheduling, схема БД, уведомления, auth, backend,
-  AI, cloud sync) в репозитории отсутствует — только фундамент.
+- `npm run lint`, `npm run typecheck`, `npm test` выполняются успешно (2026-10-08).
+- Продуктовой логики, кроме домена Stage 1 (scheduling), нет: UI контактов, схема
+  БД, уведомления, auth, backend, AI, cloud sync в репозитории отсутствуют.
 
 ## Журнал
 
@@ -50,11 +50,29 @@ Stage 0 approved владельцем (2026-10-08). Утверждённые п�
 множители, накопление no_reply, отказ от maxIntervalDays, база = текущий
 рекомендуемый интервал, min=2) зафиксированы в DOMAIN/PRODUCT/плане Stage 1.
 Реализован доменный слой: `src/domain/{types,scheduling,contact}.ts` — чистый
-TS, иммутабельный Contact, детерминированный пересчёт; 31 unit-тест.
+TS, иммутабельный Contact, детерминированный пересчёт; 30 domain-тестов
+(`scheduling.test.ts`), полный `npm test` — 31 тест (2 suites, + Stage-0 smoke).
 Проверки (2026-10-08): lint/typecheck чисто, тесты 31/31 (2 suites).
 Ветка `feat/stage-1-domain`, коммиты 80df9b9 / dffc56f / 2d0abec + отчёт.
 Открытые вопросы: стартовый интервал (сейчас 7 дней), стадия для data layer.
 Следующий шаг — внешнее ревью Stage 1. Stage 2 не начинался.
+
+### 2026-10-08 — Stage 1: правки по внешнему ревью — агент
+
+Внешнее ревью Stage 1 вернуло CHANGES REQUESTED (4 замечания). Закрыты:
+(1) `INITIAL_INTERVAL_DAYS = 7` переформулирован как временный implementation
+default / открытое решение владельца, а не approved product rule — в DOMAIN
+(раздел «Незакрытые решения»), плане Stage 1, отчёте и этом файле; (2) модель
+Contact и `docs/DOMAIN.md` согласованы: Contact = `id, name, note?, strategy,
+minIntervalDays, recommendedIntervalDays`, история Interaction — отдельная
+domain-сущность (не поле Contact), `occurredAt` принадлежит событию;
+(3) `README.md` переведён на Stage 1; (4) в `REVIEW_REPORT.md` исправлено число
+тестов: `scheduling.test.ts` — 30 domain-тестов, полный `npm test` — 31 (2 suites).
+Дополнительно для консистентности убран lint-warning (`array-type`) в тесте и
+уточнено правило 1 в `AGENTS.md` (больше не хардкодит устаревшую стадию).
+Утверждённые множители, `min=2`, отсутствие `maxIntervalDays` и накопительный
+`no_reply` НЕ менялись. Проверки (2026-10-08): lint/typecheck чисто, тесты 31/31.
+Stage 2 не начинался; ожидается повторное внешнее ревью.
 
 ### 2026-10-07 — Фикс make_patch.sh: неотслеживаемые файлы — агент
 

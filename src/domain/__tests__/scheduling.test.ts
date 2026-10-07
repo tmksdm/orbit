@@ -15,7 +15,7 @@ import type { ContactStrategy, Initiator, Outcome } from "../types";
 const at = "2026-10-08T00:00:00Z";
 
 /** [strategy, initiator, outcome, утверждённый множитель] */
-const approvedCases: Array<[ContactStrategy, Initiator, Outcome, number]> = [
+const approvedCases: [ContactStrategy, Initiator, Outcome, number][] = [
   ["maintain", "me", "good", 1.4],
   ["maintain", "me", "short", 1.7],
   ["maintain", "me", "no_reply", 2.2],

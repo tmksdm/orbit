@@ -14,7 +14,11 @@ export type Initiator = "me" | "them" | "mutual";
 /** Результат взаимодействия. */
 export type Outcome = "good" | "short" | "no_reply";
 
-/** Факт общения. */
+/**
+ * Факт общения — отдельная domain-сущность-событие, НЕ поле Contact.
+ * `occurredAt` принадлежит событию; история взаимодействий хранится отдельной
+ * коллекцией (repository на этапе data), а не внутри Contact (docs/DOMAIN.md).
+ */
 export interface Interaction {
   /** Кто инициировал. */
   readonly initiator: Initiator;
@@ -24,10 +28,16 @@ export interface Interaction {
   readonly occurredAt: string;
 }
 
-/** Человек в «орбите» пользователя. */
+/**
+ * Человек в «орбите» пользователя — состояние связи, нужное алгоритму.
+ * Истории взаимодействий здесь НЕТ: Interaction — отдельная сущность,
+ * коллекция событий хранится repository (см. docs/DOMAIN.md).
+ */
 export interface Contact {
   readonly id: string;
   readonly name: string;
+  /** Свободная заметка о человеке (необязательная). */
+  readonly note?: string;
   readonly strategy: ContactStrategy;
   /** Нижняя граница рекомендуемого интервала, дни. Верхней границы нет. */
   readonly minIntervalDays: number;

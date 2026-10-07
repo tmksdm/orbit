@@ -13,8 +13,8 @@ https://docs.expo.dev/versions/ — не полагаться на память,
 ## Рабочий контракт
 
 1. **Работай только над текущим approved Stage.** Текущий Stage, его статус и
-   следующий шаг зафиксированы в `docs/PROJECT_STATE.md`. Сейчас — Stage 0
-   (Project Foundation), он ожидает ревью.
+   следующий шаг зафиксированы в `docs/PROJECT_STATE.md` — он источник истины по
+   стадии; не дублируй номер Stage в других документах.
 2. **Сначала читай документацию проекта:** `docs/PROJECT_STATE.md`, затем
    `ARCHITECTURE.md`, `docs/DOMAIN.md`, `docs/DEVELOPMENT.md`, `docs/TESTING.md`
    и план текущего Stage в `docs/plans/`.

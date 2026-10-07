@@ -11,8 +11,8 @@
 
 | Понятие | Смысл |
 |---|---|
-| **Contact** | Человек в «орбите» пользователя: имя, заметка, contact strategy, min interval, текущий рекомендуемый интервал, история взаимодействий. |
-| **Interaction** | Факт общения: когда состоялся, initiator, outcome. |
+| **Contact** | Человек в «орбите» пользователя — состояние связи, нужное алгоритму: `id`, `name`, `note?`, `strategy`, `minIntervalDays`, `recommendedIntervalDays`. Истории взаимодействий здесь нет — см. «Модель Contact и история взаимодействий». |
+| **Interaction** | Отдельная domain-сущность-событие: когда состоялся (`occurredAt`), initiator, outcome. Не поле Contact. |
 | **Contact strategy** | Стратегия связи для контакта: `maintain` или `grow`. |
 | **maintain** | Стратегия «не потерять, не навязываться»: интервалы растут при пользовательской инициативе и никогда не сокращаются ради сближения. |
 | **grow** | Стратегия «сближаться вслед за взаимностью»: интервал сокращается только при положительных сигналах со стороны другого человека. |
@@ -28,12 +28,39 @@ type ContactStrategy = "maintain" | "grow";
 type Initiator = "me" | "them" | "mutual";
 type Outcome = "good" | "short" | "no_reply";
 
+interface Contact {
+  id: string;
+  name: string;
+  note?: string; // свободная заметка, необязательная
+  strategy: ContactStrategy;
+  minIntervalDays: number;
+  recommendedIntervalDays: number;
+}
+
 interface Interaction {
   initiator: Initiator;
   outcome: Outcome;
   occurredAt: string; // ISO 8601
 }
 ```
+
+## Модель Contact и история взаимодействий
+
+Чтобы документация и domain API не расходились (замечание внешнего ревью Stage 1):
+
+- **Contact** — состояние связи, нужное алгоритму пересчёта: `id`, `name`,
+  `note?`, `strategy`, `minIntervalDays`, `recommendedIntervalDays`. Поля истории
+  взаимодействий у Contact нет.
+- **Interaction** — отдельная domain-сущность (событие): `initiator`, `outcome`,
+  `occurredAt`. История взаимодействий — это отдельная коллекция событий, а не
+  поле Contact; её будет хранить repository на этапе data (`src/data`, вне scope
+  Stage 1).
+- **`recordInteraction(contact, interaction)`** — чистая функция перехода:
+  пересчитывает `recommendedIntervalDays` и возвращает новый Contact. Она
+  намеренно не сохраняет Interaction внутри Contact: для пересчёта нужны только
+  `initiator` и `outcome`, а `occurredAt` принадлежит событию Interaction и
+  сохраняется вместе с историей отдельной коллекцией. Так событие не «теряется» —
+  оно живёт вне Contact, а Contact остаётся снимком состояния связи.
 
 ## Смысл стратегий
 
@@ -126,9 +153,18 @@ interaction = them + good
 
 - Дробные дни округляются до целого (`Math.round`): примеры из утверждений —
   `22 × 2.2 = 48.4 → 48`, `105.6 → 106`, `8 × 0.8 = 6.4 ≈ 6`.
-- Новому контакту без истории задаётся стартовый интервал
-  `INITIAL_INTERVAL_DAYS = 7` (дефолт реализации; значение — в открытых вопросах
-  отчёта Stage 1).
+- Стартовый интервал нового контакта без истории — **не утверждённое продуктовое
+  решение**. В коде есть временный implementation default
+  `INITIAL_INTERVAL_DAYS = 7`; значение ждёт отдельного решения владельца
+  (см. «Незакрытые решения»). До этого решения 7 — рабочая заглушка, а не
+  продуктовое правило.
+
+## Незакрытые решения
+
+- **Стартовый интервал нового контакта без истории.** Продуктовое значение
+  владельцем НЕ утверждено. В коде — временный implementation default
+  `INITIAL_INTERVAL_DAYS = 7`; до отдельного решения владельца 7 не является
+  approved-правилом.
 
 ## Ключевой инвариант
 
