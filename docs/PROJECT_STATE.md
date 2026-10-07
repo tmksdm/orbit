@@ -10,8 +10,10 @@
 
 ## Текущее состояние (2026-10-08)
 
-- **Текущий Stage:** Stage 1 — Domain Model & Scheduling Algorithm. Статус: замечания внешнего ревью устранены, возвращён на внешнее ревью.
-- **Следующий шаг:** повторное внешнее ревью и approval Stage 1; затем — Stage 2 (не начинать без одобрения).
+- **Stage 1 (Domain Model & Scheduling Algorithm):** принят внешним ревью 2026-10-08 (коммит `714e0686`). Статус: approved.
+- **Текущий Stage:** Stage 2 — Data Layer (порты репозиториев + Expo SQLite). Статус: план подготовлен (`docs/plans/stage-2-data.md`, draft), ожидает утверждения решений владельцем; реализация НЕ начата.
+- **Следующий шаг:** утвердить решения по плану Stage 2 (раздел «Решения к утверждению»), затем реализация. Следующий Stage не начинать без одобрения.
+- **Открытый вопрос:** стартовый интервал нового контакта (сейчас временный implementation default 7 дней) — НЕ утверждён, решение за владельцем; в Stage 2 не закрывается.
 
 ## Что готово (Stage 0)
 
@@ -32,6 +34,21 @@
 - CI: `.github/workflows/ci.yml` — lint/typecheck/test на PR в `main` и push в `main`.
 - Git: `main` (коммит каркаса) + ветка `chore/project-foundation` (все изменения
   Stage 0). Push не выполнялся — у среды нет доступов.
+
+## Что готово (Stage 1 — принят внешним ревью 2026-10-08)
+
+- Доменный слой `src/domain/{types,scheduling,contact}.ts`: чистый TypeScript без
+  React / Expo / SQLite / UI; иммутабельный `Contact`
+  (`id, name, note?, strategy, minIntervalDays, recommendedIntervalDays`);
+  детерминированный пересчёт `computeNextIntervalDays`; таблица утверждённых
+  множителей `INTERVAL_MULTIPLIERS`.
+- `Interaction` — отдельная domain-сущность; `recordInteraction` пересчитывает
+  `recommendedIntervalDays` и не хранит событие в Contact (историю будет хранить
+  слой данных на Stage 2).
+- Тесты: 30 domain-тестов (`src/domain/__tests__/scheduling.test.ts`) + 1 smoke
+  Stage 0 = 31 total, 2 suites.
+- Утверждённые scheduling-правила (множители, `min = 2`, отсутствие
+  `maxIntervalDays`, накопительный `no_reply`) не изменялись на ревью.
 
 ## Проверенные факты
 
@@ -56,6 +73,18 @@ TS, иммутабельный Contact, детерминированный пе�
 Ветка `feat/stage-1-domain`, коммиты 80df9b9 / dffc56f / 2d0abec + отчёт.
 Открытые вопросы: стартовый интервал (сейчас 7 дней), стадия для data layer.
 Следующий шаг — внешнее ревью Stage 1. Stage 2 не начинался.
+
+### 2026-10-08 — Stage 1 APPROVED — агент
+
+Внешнее ревью подтвердило Stage 1 (коммит `714e06867462cb7c96542aac67d7b5849c7a9006`):
+все замечания предыдущего ревью закрыты, утверждённые scheduling-правила
+(множители, `min = 2`, отсутствие `maxIntervalDays`, накопительный `no_reply`)
+сохранены. Stage 1 считается принятым. Зафиксирован approval владельца; стартовый
+интервал нового контакта (7 дней) остаётся открытым — это временный implementation
+default, а не approved product rule. Подготовлен план Stage 2 — слой данных
+(`docs/plans/stage-2-data.md`, draft). Реализация Stage 2 не начиналась: сначала
+владелец утверждает решения из плана. В `AGENTS.md` уточнена формулировка про
+упоминание Stage в документах. Проверки не изменялись (правки документационные).
 
 ### 2026-10-08 — Stage 1: правки по внешнему ревью — агент
 
