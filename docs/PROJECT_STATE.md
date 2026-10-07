@@ -41,6 +41,18 @@
 
 ## Журнал
 
+### 2026-10-07 — Уточнение domain-правил maintain/grow — агент
+
+По уточнению продукта (`stage-0-domain-clarification`) в `docs/DOMAIN.md`
+зафиксированы правила изменения интервала: типы `ContactStrategy` / `Initiator`
+(`me|them|mutual`) / `Outcome` (`good|short|no_reply`), шесть правил с
+предварительными множителями (в т.ч. `grow + them + good → × 0.8`, `no_reply →
+× 2.2` с приоритетом над `grow`), границы `min=2` / `max=45` дней, ключевой
+инвариант, предварительная таблица поведения и открытые вопросы (`mutual` и
+недостающие множители — TBD до Stage 1). Определения `maintain` / `grow`
+синхронизированы в `docs/PRODUCT.md`. Правила задокументированы, в коде НЕ
+реализованы. Проверки перезапущены — зелёные.
+
 ### 2026-10-07 — Stage 0 (Project Foundation) — агент
 
 Выполнен Stage 0: каркас приложения, strict TypeScript, ESLint/Prettier, Jest/RNTL
