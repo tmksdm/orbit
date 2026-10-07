@@ -1,41 +1,98 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+# AGENTS.md — операционный контракт для coding agents (проект Orbit)
 
-## Expo has changed — do not trust your training data
+Orbit — мобильное приложение (Expo + React Native + TypeScript), local-first, без
+backend. Этот файл — краткий контракт, как агенту работать в репозитории; он не
+должен превращаться в спецификацию продукта. Детали — в документах из карты ниже.
 
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
+Технические детали Expo/SDK (версии команд, роутинг в `src/app`, Continuous Native
+Generation — не создавать `ios/`/`android/` руками, использовать `npx expo install`
+для совместимых версий пакетов): см. `AGENTS.md`-подсказки шаблона Expo и
+https://docs.expo.dev/versions/ — не полагаться на память, а сверяться с документацией
+своей версии SDK.
 
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+## Рабочий контракт
 
-## Commands
+1. **Работай только над текущим approved Stage.** Текущий Stage, его статус и
+   следующий шаг зафиксированы в `docs/PROJECT_STATE.md`. Сейчас — Stage 0
+   (Project Foundation), он ожидает ревью.
+2. **Сначала читай документацию проекта:** `docs/PROJECT_STATE.md`, затем
+   `ARCHITECTURE.md`, `docs/DOMAIN.md`, `docs/DEVELOPMENT.md`, `docs/TESTING.md`
+   и план текущего Stage в `docs/plans/`.
+3. **Не добавляй незапрошенные функции** — ни продуктовые, ни «попутные»
+   инфраструктурные. Объём работ определяет план текущего Stage, не твои идеи.
+4. **Не меняй product/domain поведение молча.** Изменение поведения = отдельный
+   коммит + обновление соответствующего документа (`docs/PRODUCT.md`,
+   `docs/DOMAIN.md`).
+5. **Держи domain logic вне React-компонентов:** `src/domain` — чистый TypeScript
+   без импортов react, expo, react-native, sqlite и UI. Направление зависимостей —
+   `ARCHITECTURE.md`.
+6. **Перед завершением задачи запускай и добивайся зелёного статуса:**
+   `npm run lint && npm run typecheck && npm test`.
+7. **Не ослабляй тесты ради зелёного CI:** не удаляй, не скипай и не смягчай
+   проверки. Падение теста — повод чинить код (или явно обсудить сам тест), а не
+   подгонять отчёт.
+8. **Делай небольшие логические коммиты** в формате Conventional Commits
+   (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`).
+9. **Перед каждым коммитом проверяй `git diff`** — в коммит попадает только то,
+   что задумано.
+10. **Не переходи к следующему Stage самостоятельно:** следующий Stage стартует
+    только после ревью и явного одобрения результатов текущего.
 
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+## Карта документов
+
+| Документ | Назначение |
+|---|---|
+| `docs/PROJECT_STATE.md` | журнал состояния: проверенные факты, следующий шаг — читать первым |
+| `README.md` | стартовая справка: стек, команды, структура |
+| `ARCHITECTURE.md` | слои и направление зависимостей |
+| `docs/PRODUCT.md` | продуктовое видение, принципы, сценарии MVP |
+| `docs/DOMAIN.md` | глоссарий domain-концепций и принципы стратегий |
+| `docs/DEVELOPMENT.md` | ветки, коммиты, PR, цикл разработки |
+| `docs/TESTING.md` | тестовая стратегия |
+| `docs/plans/` | планы Stage'ей и шаблон плана |
+| `docs/decisions/` | ADR — архитектурные решения |
+| `docs/SYNC.md` | протокол обмена файлами с ноутбуком пользователя |
+
+## Команды
 
 ```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
+npm start          # expo start (dev server)
+npm run android    # запуск на Android
+npm run lint       # eslint
+npm run typecheck  # tsc --noEmit
+npm test           # jest (jest-expo + @testing-library/react-native)
+npm run format     # prettier --write .
 ```
 
-Run lint and typecheck before declaring any task done.
+## Передача файлов между пользователем и агентом
 
-## Navigation & Routing
+Пользователь работает на ноутбуке (Windows, `D:\Pr\orbit`) и обменивается с агентом
+срезом проекта через личный AI Drive. Полное описание протокола и точные команды: `docs/SYNC.md`.
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+- **Получить код:** `gsk aidrive download /orbit_sync/from_laptop/orbit_from_laptop.zip <куда>`
+  вместе с `PUSH_INFO.txt` (там ветка, коммит и sha256 архива). Сверить sha256 перед распаковкой.
+- **Отдать изменения:** `bash tools/sync/make_patch.sh -d <корень проекта> -v <ГГГГММДД-NN> -m "<что сделано>" <файлы…>`.
+  Скрипт сам собирает архив с описанием и выкладывает его в `/orbit_sync/to_laptop`.
+  Пользователь забирает патч двойным щелчком по `orbit.cmd`, пункт 3.
+- Патч выкладывать только на законченном и проверенном этапе. Правки пользователя не перезаписывать без его просьбы.
+- Перед каждой отправкой и приёмом напоминать пользователю включить VPN: без него его сеть отклоняет
+  запросы к Genspark.
+- В распакованном архиве `git status` может показывать все файлы изменёнными — это переводы строк
+  Windows, а не правки. Смотреть реальные изменения: `git diff --ignore-cr-at-eol`.
+  Новые файлы создавать с LF (добавить `.gitattributes` с `* text=auto eol=lf`).
+- В архив не попадают `.env`, ключи, `node_modules`, базы — состав берётся по правилам `.gitignore`.
+- Не выполнять `git commit` и `git push` без отдельной просьбы пользователя.
 
-## Building with EAS
+## Состояние проекта
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+Перед началом работы читать `docs/PROJECT_STATE.md` (проверенные факты и следующий шаг) и обновлять его
+после каждого законченного этапа — только проверенными фактами.
 
-## Rules
+## Экономичный режим работы
 
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+1. Контекст читать по карте, а не целиком: `docs/PROJECT_STATE.md` — первым файлом.
+2. Один этап за окно; не начинать следующий, пока текущий не зелёный.
+3. Тесты — точечно во время работы, полный прогон перед выкладкой патча.
+4. Патч — только изменённые файлы (явный список путей в make_patch.sh).
+5. Не пересказывать документы в ответах — ссылаться на разделы.
+6. Короткие ответы: главное сверху, без повторов.

@@ -1,56 +1,60 @@
-# Welcome to your Expo app 👋
+# Orbit («Орбита») — Stage 0
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Мобильное приложение, помогающее не терять полезные и интересные социальные связи:
+пользователь добавляет людей, фиксирует факты общения, а приложение подсказывает,
+когда стоит связаться снова. Local-first, без регистрации и backend. Первая
+платформа — Android.
 
-## Get started
+**Статус:** Stage 0 — Project Foundation (каркас, тулинг, документация, CI).
+Продуктовые функции ещё не реализованы. Текущее состояние и следующий шаг —
+`docs/PROJECT_STATE.md`.
 
-1. Install dependencies
+## Стек
 
-   ```bash
-   npm install
-   ```
+- Expo (SDK 57) + React Native + Expo Router
+- TypeScript (strict)
+- ESLint + Prettier
+- Jest + React Native Testing Library
+- GitHub Actions (CI: lint / typecheck / test)
 
-2. Start the app
+## Требования
 
-   ```bash
-   npx expo start
-   ```
+- Node.js 22, npm 10+
 
-In the output, you'll find options to open the app in a
+## Команды
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+| Команда | Что делает |
+|---|---|
+| `npm start` | Expo dev server |
+| `npm run android` | запуск на Android (эмулятор/устройство) |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | проверка типов TypeScript (`tsc --noEmit`) |
+| `npm test` | Jest + React Native Testing Library |
+| `npm run format` | Prettier по проекту |
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Структура
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```text
+src/
+  app/        # экраны и навигация (expo-router) — сейчас один placeholder Stage 0
+  domain/     # чистая бизнес-логика, без React/Expo/SQLite/UI — с Stage 1
+  data/       # хранилище и репозитории (порты domain)
+  services/   # системные сервисы (platform API)
+  features/   # фичевые модули, связывающие UI и domain
+  ui/         # переиспользуемые UI-компоненты без бизнес-правил
+docs/         # документация, планы стадий, ADR
+tools/sync/   # синхронизация с ноутбуком (см. docs/SYNC.md)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Правила слоёв и направление зависимостей — `ARCHITECTURE.md`.
 
-### Other setup steps
+## Документация
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `AGENTS.md` — операционный контракт для coding agents (начни с него)
+- `docs/PRODUCT.md` — продуктовое видение и принципы
+- `docs/DOMAIN.md` — domain-концепции (Contact, Interaction, maintain/grow)
+- `docs/DEVELOPMENT.md` — ветки, коммиты, PR, цикл разработки
+- `docs/TESTING.md` — тестовая стратегия
+- `docs/plans/` — планы стадий и шаблон плана
+- `docs/decisions/` — ADR
+- `docs/SYNC.md` — обмен файлами с ноутбуком пользователя
