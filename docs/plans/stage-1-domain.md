@@ -1,67 +1,80 @@
-# Stage 1 — Domain model и scheduling algorithm
+# План Stage 1 — Domain model и scheduling algorithm
 
-- Статус: Draft — план НЕ выполняется; Stage 1 — отдельная задача после ревью
-  и одобрения Stage 0
-- Дата постановки: 2026-10-07
+Статус: **approved (2026-10-08), выполняется.** Решения владельца зафиксированы
+в `docs/DOMAIN.md`; этот план — рабочая постановка Stage 1.
 
 ## Goal
 
-Определить domain model Orbit и реализовать core scheduling algorithm: расчёт
-рекомендуемого интервала до следующего контакта для стратегий `maintain` и `grow`.
+Реализовать доменный слой: типы Contact / Interaction и scheduling algorithm —
+чистые TypeScript-функции пересчёта рекомендуемого интервала, покрытые
+unit-тестами.
 
 ## Scope
 
-- Доменные типы и сущности: Contact, Interaction, initiator, outcome, contact strategy
-  (`maintain` / `grow`), adaptive interval, min/max interval — по `docs/DOMAIN.md`.
-- Чистые функции пересчёта интервала в `src/domain` (без React/Expo/SQLite/UI).
-- Unit-тесты на всю математику стратегий.
-- Обновление `docs/DOMAIN.md` точными правилами пересчёта.
+- `src/domain/types.ts` — `ContactStrategy`, `Initiator`, `Outcome`, `Interaction`, `Contact`.
+- `src/domain/scheduling.ts` — таблица утверждённых множителей и чистая функция
+  пересчёта `computeNextIntervalDays`.
+- `src/domain/contact.ts` — фабрика контакта и `recordInteraction` (иммутабельное
+  применение взаимодействия).
+- Unit-тесты `src/domain/__tests__/` — все обязательные кейсы (см. Required tests).
+- Обновление `docs/DOMAIN.md`, `docs/PRODUCT.md`, `REVIEW_REPORT.md`,
+  `docs/PROJECT_STATE.md`.
 
 ## Out of scope
 
-- Любой UI (экраны контактов, редактирование, экран рекомендаций).
-- БД, схема данных, repositories (`src/data`).
-- Notifications и permissions.
-- Синхронизация, backend, auth, AI.
+UI; SQLite; repositories; notifications; backend; authentication; cloud sync; AI;
+продуктовые экраны. Domain — чистый TypeScript без React, Expo, SQLite и UI.
 
 ## Technical approach
 
-- Чистые детерминированные функции: на вход — история взаимодействий, стратегия,
-  текущие границы интервала; на выход — рекомендуемый интервал.
-- Принцип взаимности для `grow` (см. `docs/DOMAIN.md`): сокращение интервала —
-  только при положительных сигналах взаимности; входящий контакт сам по себе
-  интервал не уменьшает. Конкретные веса и формулы — определить при реализации и
-  зафиксировать в `docs/DOMAIN.md`.
-- Границы: результат всегда зажат между min и max interval; для `maintain` —
-  монотонный рост интервалов при отсутствии инициативы с другой стороны.
+- База пересчёта — текущий рекомендуемый интервал контакта (не фактический
+  промежуток между взаимодействиями).
+- Множители — по утверждённой таблице (`docs/DOMAIN.md`); производные ячейки:
+  `maintain + mutual` как them (×1.0), `grow + mutual + short` ×1.0,
+  `no_reply` ×2.2 при любом initiator.
+- Каждый новый `no_reply` умножает текущий интервал ещё раз (накопление).
+- `maxIntervalDays` НЕ реализуется — рост без потолка (решение владельца).
+- Результат не ниже `minIntervalDays` (по умолчанию 2).
+- Дробные дни — `Math.round` до целых.
+- Стартовый интервал контакта без истории — `INITIAL_INTERVAL_DAYS = 7`.
+- Функции детерминированы: без часов, случайности и I/O.
 
 ## Acceptance criteria
 
-- [ ] `src/domain` содержит типы и чистые функции и не импортирует React/Expo/SQLite/UI
-- [ ] Математика обеих стратегий покрыта unit-тестами, включая граничные случаи
-- [ ] `npm run lint`, `npm run typecheck`, `npm test` — зелёные
-- [ ] `docs/DOMAIN.md` и `docs/PROJECT_STATE.md` обновлены
+- Все обязательные тест-кейсы зелёные (`npm test`).
+- `npm run lint`, `npm run typecheck` — чисто.
+- В `src/domain` нет импортов react / expo / react-native / sqlite / UI.
+- Документация соответствует коду (множители, min, отсутствие max).
 
 ## Required tests
 
-- `maintain`: при отсутствии взаимной инициативы интервалы не убывают (растут),
-  ограничены max interval.
-- `grow`: сокращение интервала — только при положительных сигналах взаимности;
-  отсутствие взаимности не сокращает интервал; интервал не ниже min.
-- Граничные случаи: пустая история, первое взаимодействие, упор в min/max границы.
+- maintain + me + good / short / no_reply;
+- maintain + them + good / short;
+- grow + me + good / short / no_reply;
+- grow + them + good / short;
+- grow + mutual + good;
+- повторные no_reply (накопление: 10 → 22 → 48 → 106);
+- отсутствие maxIntervalDays (рост выше 45 и дальше);
+- очень большие интервалы;
+- minIntervalDays (дефолт и кастомная граница);
+- первое взаимодействие (база — стартовый интервал, не фактический промежуток);
+- отсутствие истории (детерминированный дефолт);
+- детерминированность расчёта.
 
 ## Manual verification
 
-Не применимо для Stage 1 (UI нет): проверка — unit-тесты; при желании — ручной прогон
-функций на примерах в node.
+- Греп-проверка `src/domain` на запрещённые импорты.
+- Прогон полного набора `npm run lint && npm run typecheck && npm test`.
+- Сверка таблицы множителей кода с `docs/DOMAIN.md`.
 
 ## Risks
 
-- Переусложнение математики на старте — начинать с простых правил, зафиксированных
-  в `docs/DOMAIN.md`, и развивать тестами.
-- Скрытая зависимость domain от инфраструктуры — контролировать правилами
-  `ARCHITECTURE.md` и структурой каталогов.
+- Стартовый интервал 7 дней — дефолт реализации, не утверждён владельцем
+  (открытый вопрос отчёта).
+- Производные ячейки (mutual) выведены из утверждённых правил — помечены в
+  `docs/DOMAIN.md`, проверить на ревью.
 
 ## Completion report
 
-<Заполняется по выполнении Stage 1.>
+По завершении — `REVIEW_REPORT.md` в корне (структура отчёта Stage), остановка,
+ожидание внешнего ревью. Stage 2 самостоятельно не начинается.
