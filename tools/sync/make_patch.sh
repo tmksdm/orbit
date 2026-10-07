@@ -52,7 +52,7 @@ cd "$ROOT"
 if [ "${#PATHS[@]}" -eq 0 ]; then
   command -v git >/dev/null 2>&1 && git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
     || fail "git недоступен и файлы не указаны"
-  while IFS= read -r p; do PATHS+=("$p"); done < <(git -C "$ROOT" ls-files | grep -v '^\.sync/')
+  while IFS= read -r p; do PATHS+=("$p"); done < <( git -C "$ROOT" ls-files --cached --others --exclude-standard | grep -v '^\.sync/')
 fi
 
 [ "${#PATHS[@]}" -gt 0 ] || fail "список файлов пуст"
@@ -98,6 +98,7 @@ HEAD="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo n/a)"
   echo "version: $VERSION"
   echo "created_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "created_by: Genspark Super Agent"
+  echo "account: $(gsk me 2>/dev/null | grep -Eo '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+' | head -n1 || true)"
   echo "message: ${MESSAGE:-без описания}"
   echo "base_head: $HEAD"
   echo "archive: $ARCHIVE_NAME"
