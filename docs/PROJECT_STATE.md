@@ -11,13 +11,13 @@
 ## Текущее состояние (2026-10-08)
 
 - **Stage 1 (Domain Model & Scheduling Algorithm):** accepted внешним ревью (2026-10-08, коммит `714e0686`) и **approved в актуализированном виде** (коммит `37fb8070`): механика MVP утверждена — `INITIAL_INTERVAL_DAYS = 2`, `no_reply` ×2.0, накопительно (`2 → 4 → 8 → 16 → 32 → 64`); остальные правила Stage 1 без изменений.
-- **Текущий Stage:** Stage 2 — Data Layer. Статус: **реализован и проверен** (план approved владельцем 2026-10-08 с двумя обязательными уточнениями — атомарная запись и foreign keys — внесёнными); ожидает внешнего ревью.
-- **Следующий шаг:** внешнее ревью Stage 2; после approval — Stage 3.
+- **Текущий Stage:** Stage 2 — Data Layer. Статус: внешнее ревью вернуло CHANGES REQUESTED (2026-10-08; BLOCKER-01 — изоляция SQLite-транзакций, MINOR-01 README, MINOR-02 REVIEW_REPORT); замечания исправлены, изменения ожидают **повторного внешнего ревью**.
+- **Следующий шаг:** повторное внешнее ревью Stage 2 после исправлений; после approval — Stage 3.
 - **Открытые вопросы:** блокирующих нет; стартовый интервал закрыт (approved = 2 дня).
 
 ## Дорожная карта
 
-1. **Stage 2 — Data Layer:** порты репозиториев + Expo SQLite + миграции — **реализован** (план: `docs/plans/stage-2-data.md`); ожидает внешнего ревью.
+1. **Stage 2 — Data Layer:** порты репозиториев + Expo SQLite + миграции — реализован, исправления по внешнему ревью внесены (план: `docs/plans/stage-2-data.md`); ожидает повторного внешнего ревью.
 2. **Stage 3 — Первый вертикальный UI-срез:** реально используемый сценарий на телефоне (список «с кем связаться», добавление контакта, фиксация взаимодействия и пересчёт интервала). Отдельного инфраструктурного этапа между Stage 2 и Stage 3 не вводится. Не начат.
 
 ## Что готово (Stage 0)
@@ -57,26 +57,30 @@
   стартовый интервал нового контакта = 2 дня; `no_reply` = ×2.0 (приоритет,
   накопительно — `2 → 4 → 8 → 16 → 32 → 64`).
 
-## Что готово (Stage 2 — реализован 2026-10-08, ожидает внешнего ревью)
+## Что готово (Stage 2 — реализован, исправлен по ревью 2026-10-08, ожидает повторного ревью)
 
 - Порты репозиториев `src/domain/ports.ts` (`ContactRepository`,
   `InteractionRepository`) — чистый TypeScript, без импортов React / Expo /
   react-native / SQLite / UI.
-- `src/data`: минимальный драйвер `SqlDatabase` (`sqlDatabase.ts`), продовый
-  драйвер `expoSqliteDriver.ts` поверх `expo-sqlite`, миграции (`migrations.ts`,
-  forward-only, `PRAGMA user_version`), репозитории (`contactRepository.ts`,
-  `interactionRepository.ts`), сборка слоя (`dataLayer.ts`) и точка входа
-  `index.ts` (`openOrbitDatabase`).
-- Обязательные уточнения владельца внесены: (1) фиксация взаимодействия —
-  data-level unit-of-work `interactionRecorder.ts` — пишет `Interaction` и
-  обновлённый `Contact` атомарно в одной транзакции; (2) при открытии БД
-  выполняется `PRAGMA foreign_keys = ON`.
-- Тесты: 16 интеграционных тестов Stage 2 (`src/data/__tests__/*.test.ts`) на
+- `src/data`: минимальный драйвер `SqlDatabase` (`sqlDatabase.ts`; `transaction`
+  передаёт транзакционный контекст `tx`), продовый драйвер `expoSqliteDriver.ts`
+  поверх `expo-sqlite` с **эксклюзивной транзакцией**
+  (`withExclusiveTransactionAsync`, запросы идут через `txn`), миграции
+  (`migrations.ts`, forward-only, `PRAGMA user_version`), репозитории
+  (`contactRepository.ts`, `interactionRepository.ts`), сборка слоя
+  (`dataLayer.ts`) и точка входа `index.ts` (`openOrbitDatabase`).
+- Обязательные уточнения владельца: (1) фиксация взаимодействия — unit-of-work
+  `interactionRecorder.ts` — пишет `Interaction` и обновлённый `Contact`
+  атомарно в одной **эксклюзивной** транзакции (запросы через `tx`); (2) при
+  открытии БД выполняется `PRAGMA foreign_keys = ON`.
+- Тесты: 20 интеграционных тестов Stage 2 (`src/data/__tests__/*.test.ts`) на
   реальном `node:sqlite` через тестовый драйвер `src/data/testing/`
-  (репозитории, миграции/идемпотентность, rollback, foreign keys). Полный
-  `npm test` — 47 тестов (7 suites).
-- Документация: `ARCHITECTURE.md` (раздел «Слой данных»), `docs/TESTING.md`,
-  план `docs/plans/stage-2-data.md` (approved), этот файл.
+  (репозитории, миграции/идемпотентность, rollback, foreign keys, commit/rollback
+  и изоляция параллельного соединения). Полный `npm test` — 51 тест (8 suites).
+- Документация: `README.md` (Stage 2), `ARCHITECTURE.md` (раздел «Слой данных»),
+  `docs/TESTING.md`, план `docs/plans/stage-2-data.md` (approved), этот файл.
+- Непроверенное: поведение нативного `expo-sqlite` на устройстве (в песочнице
+  нет Android/iOS) — ручной прогон на Stage 3.
 
 ## Проверенные факты
 
@@ -91,6 +95,21 @@
   отсутствуют (вне Stage 2).
 
 ## Журнал
+
+### 2026-10-08 — Stage 2: исправления по внешнему ревью (CHANGES REQUESTED) — агент
+
+Внешнее ревью Stage 2 (коммит `d1f29a7`) вернуло CHANGES REQUESTED. Исправлено:
+**BLOCKER-01** — изоляция SQLite-транзакций: `expoSqliteDriver.ts` переведён с
+`withTransactionAsync` на `withExclusiveTransactionAsync`; `SqlDatabase.transaction`
+передаёт транзакционный контекст `tx`, а unit-of-work фиксации взаимодействия
+строит репозитории поверх `tx`, поэтому все запросы атомарной операции идут
+внутри одной изолированной транзакции. Добавлены тесты: rollback на реальном
+SQLite (сбой второго шага через триггер), проверка контекста транзакции, изоляция
+незакоммиченной записи от параллельного соединения (файловая БД, два соединения).
+**MINOR-01** — README переведён на Stage 2. **MINOR-02** — REVIEW_REPORT
+актуализирован (HEAD/коммиты/состояние, убрано устаревшее «не закоммичено»).
+Порты domain и правила Stage 1 не менялись. Проверки (2026-10-08): lint/typecheck
+чисто, тесты 51/51 (8 suites). Stage 2 не approved; Stage 3 не начат.
 
 ### 2026-10-08 — Stage 2 (Data Layer) реализован — агент
 

@@ -12,8 +12,8 @@ import type { SqlDatabase } from "./sqlDatabase";
 export interface Migration {
   /** Версия схемы после применения (`PRAGMA user_version`). */
   readonly version: number;
-  /** Применяет изменение схемы. */
-  readonly up: (db: SqlDatabase) => Promise<void>;
+  /** Применяет изменение схемы через переданный транзакционный контекст. */
+  readonly up: (tx: SqlDatabase) => Promise<void>;
 }
 
 /** Схема версии 1: контакты и отдельная история взаимодействий. */
@@ -40,7 +40,7 @@ CREATE INDEX idx_interactions_contact ON interactions(contactId, occurredAt);
 
 /** Упорядоченный список миграций (по возрастанию версии). */
 export const MIGRATIONS: readonly Migration[] = [
-  { version: 1, up: (db) => db.exec(SCHEMA_V1_SQL) },
+  { version: 1, up: (tx) => tx.exec(SCHEMA_V1_SQL) },
 ];
 
 /** Актуальная версия схемы (версия последней миграции). */
@@ -54,7 +54,8 @@ export async function getSchemaVersion(db: SqlDatabase): Promise<number> {
 
 /**
  * Применяет все миграции, версия которых больше текущей. Идемпотентна:
- * при актуальной схеме не выполняет ни одного изменения.
+ * при актуальной схеме не выполняет ни одного изменения. Каждая миграция
+ * и обновление `user_version` выполняются в одной транзакции.
  */
 export async function runMigrations(db: SqlDatabase): Promise<void> {
   let current = await getSchemaVersion(db);
@@ -62,9 +63,9 @@ export async function runMigrations(db: SqlDatabase): Promise<void> {
     if (migration.version <= current) {
       continue;
     }
-    await db.transaction(async () => {
-      await migration.up(db);
-      await db.exec(`PRAGMA user_version = ${migration.version}`);
+    await db.transaction(async (tx) => {
+      await migration.up(tx);
+      await tx.exec(`PRAGMA user_version = ${migration.version}`);
     });
     current = migration.version;
   }

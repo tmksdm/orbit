@@ -34,6 +34,6 @@ export async function prepareDatabase(db: SqlDatabase): Promise<void> {
 export function createDataLayer(db: SqlDatabase): OrbitDataLayer {
   const contacts = createContactRepository(db);
   const interactions = createInteractionRepository(db);
-  const recorder = createInteractionRecorder(db, contacts, interactions);
+  const recorder = createInteractionRecorder(db);
   return { db, contacts, interactions, recorder };
 }
