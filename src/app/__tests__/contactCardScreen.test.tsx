@@ -168,16 +168,18 @@ describe("карточка контакта (F3)", () => {
 
     // Сохранение недоступно, пока выбран не каждый из двух (DESIGN.md §8,
     // REVIEW-01): кнопка неактивна, бизнес-операция не вызывается.
+    // MINOR-01: при неполном выборе сообщение об ошибке НЕ показывается.
     const save = () => screen.getByRole("button", { name: "Сохранить" });
     expect(save().props.accessibilityState?.disabled).toBe(true);
     expect(recordInteraction).not.toHaveBeenCalled();
-    expect(screen.getByText("Выберите инициатора и результат.")).toBeTruthy();
+    expect(screen.queryByText("Выберите инициатора и результат.")).toBeNull();
 
-    // Выбран только инициатор — сохранение всё ещё недоступно:
+    // Выбран только инициатор — сохранение всё ещё недоступно, ошибки нет:
     await act(async () => {
       fireEvent.press(screen.getByTestId("initiator-mutual"));
     });
     expect(save().props.accessibilityState?.disabled).toBe(true);
+    expect(screen.queryByText("Выберите инициатора и результат.")).toBeNull();
 
     // Выбран результат — кнопка доступна, сохранение вызывает use-case:
     await act(async () => {
@@ -204,6 +206,43 @@ describe("карточка контакта (F3)", () => {
     );
     // Обновлённый интервал виден в кольце (число 8 из перезагруженной карточки):
     await waitFor(() => expect(screen.getByText("8")).toBeTruthy());
+  });
+
+  it("MINOR-01: ошибка сохранения с экрана отображается, неполный выбор — нет", async () => {
+    const view = makeView();
+    const { services } = makeServices(view, view);
+    (services.recordInteraction as jest.Mock).mockRejectedValueOnce(
+      new Error("save failed"),
+    );
+    const screen = await renderCard(services);
+
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "Зафиксировать общение" }),
+      );
+    });
+    // Шторка открыта с пустым выбором — сообщений об ошибке нет:
+    expect(screen.queryByText("Выберите инициатора и результат.")).toBeNull();
+    expect(
+      screen.queryByText("Не удалось сохранить. Попробуйте ещё раз."),
+    ).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("initiator-me"));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("outcome-good"));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "Сохранить" }));
+    });
+
+    // Реальная ошибка сохранения показывается как прежде:
+    await waitFor(() =>
+      expect(
+        screen.getByText("Не удалось сохранить. Попробуйте ещё раз."),
+      ).toBeTruthy(),
+    );
   });
 
   it("без истории и без createdAt: срок не рассчитан — без блока «пора», дата «—», особый текст истории", async () => {
