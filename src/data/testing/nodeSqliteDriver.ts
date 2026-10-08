@@ -5,6 +5,10 @@
  * тестируются против реальной СУБД, а не заглушки (docs/plans/stage-2-data.md).
  * `node:sqlite` синхронный; интерфейс `SqlDatabase` асинхронный, поэтому методы
  * обёрнуты в `Promise`.
+ *
+ * `node:sqlite` использует одно соединение, поэтому транзакционный контекст —
+ * тот же драйвер: все запросы на этом соединении внутри `BEGIN…COMMIT` входят в
+ * транзакцию, как и в `expo-sqlite` при использовании транзакционного `txn`.
  */
 
 import { DatabaseSync } from "node:sqlite";
@@ -20,7 +24,7 @@ export function createNodeSqliteDriver(path = ":memory:"): SqlDatabase {
   const database = new DatabaseSync(path);
   let inTransaction = false;
 
-  return {
+  const driver: SqlDatabase = {
     async exec(sql: string): Promise<void> {
       database.exec(sql);
     },
@@ -37,14 +41,14 @@ export function createNodeSqliteDriver(path = ":memory:"): SqlDatabase {
       return database.prepare(sql).all(...params) as T[];
     },
 
-    async transaction<T>(work: () => Promise<T>): Promise<T> {
+    async transaction<T>(work: (tx: SqlDatabase) => Promise<T>): Promise<T> {
       if (inTransaction) {
-        return work();
+        return work(driver);
       }
       database.exec("BEGIN");
       inTransaction = true;
       try {
-        const result = await work();
+        const result = await work(driver);
         database.exec("COMMIT");
         return result;
       } catch (error) {
@@ -59,4 +63,6 @@ export function createNodeSqliteDriver(path = ":memory:"): SqlDatabase {
       database.close();
     },
   };
+
+  return driver;
 }

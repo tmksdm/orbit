@@ -10,6 +10,11 @@ Stage 2 — Data Layer (порты репозиториев + Expo SQLite)
 Проверки зелёные (lint / typecheck / tests). Stage 2 **не** объявлен approved,
 Stage 3 не начат.
 
+Устранён также промах упаковки патча: патч `20261008-02` изменил сигнатуру
+`SqlDatabase.transaction`, но не содержал переписанный тестовый драйвер
+`nodeSqliteDriver.ts`, из-за чего CI на чистой сборке упал с `TS2322`
+(см. «CI follow-up»). Драйвер добавлен в патч `20261008-03`.
+
 ## Review baseline
 
 Внешнее ревью Stage 2 проведено на коммите `d1f29a7736c1b5b2604b8880ca2eafc0720a2e35`
@@ -67,6 +72,33 @@ Stage 3 не начат.
 
 Сведения о HEAD/коммитах/состоянии Stage 2 актуализированы; устаревшее
 утверждение «изменения не закоммичены» убрано (см. «Review baseline»).
+
+### CI follow-up — промах упаковки патча `20261008-02` (исправлено)
+
+После применения патча `20261008-02` CI упал: `src/data/testing/nodeSqliteDriver.ts(40,11):
+error TS2322`. Причина — **не типовая, а упаковочная**: патч `20261008-02` изменил
+контракт `SqlDatabase.transaction(work: (tx) => …)` (файлы `sqlDatabase.ts`,
+`expoSqliteDriver.ts`, `interactionRecorder.ts`, `migrations.ts`, `dataLayer.ts`),
+но не включил переписанный тестовый драйвер `nodeSqliteDriver.ts`, который в
+рабочем дереве агента уже был приведён к новому контракту. На чистой сборке
+(ноутбук) драйвер остался со старой сигнатурой `work: () => Promise<T>` →
+несовместимость с портом → `TS2322` в CI. Локально проверки были зелёными ровно
+потому, что локальный драйвер был исправлен, а в патч не попал.
+
+Исправление: `nodeSqliteDriver.ts` добавлен в патч `20261008-03`. Сам драйвер
+реализует транзакционность по существу, а не формально по типам: `transaction`
+передаёт в callback **тот же драйвер** (`work(driver)`) — `node:sqlite` использует
+одно соединение, поэтому запросы внутри `BEGIN…COMMIT` действительно входят в
+транзакцию; при ошибке — `ROLLBACK` с пробросом; вложенный `transaction`
+переиспользует активную транзакцию (без повторного `BEGIN`). Это поведение
+покрыто `sqlDatabase.test.ts` (commit, rollback, изоляция параллельного
+соединения) и rollback-тестом в `interactionRecorder.test.ts`.
+
+Проверены все реализации `SqlDatabase.transaction` и места вызова:
+- прод — `src/data/expoSqliteDriver.ts` (`withExclusiveTransactionAsync` + `txn`);
+- тест — `src/data/testing/nodeSqliteDriver.ts` (единственное соединение = контекст);
+- подменный драйвер в `src/data/__tests__/interactionRecorder.test.ts` (новый контракт);
+- вызовы — `migrations.ts`, `interactionRecorder.ts`, `sqlDatabase.test.ts`.
 
 ## Summary (реализация Stage 2)
 
