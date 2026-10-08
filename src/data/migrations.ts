@@ -1,0 +1,71 @@
+/**
+ * Миграции схемы SQLite: forward-only, версия через `PRAGMA user_version`.
+ *
+ * Откатов нет — сознательно для local-first MVP (docs/plans/stage-2-data.md).
+ * Раннер идемпотентен: применяются только миграции с версией больше текущей,
+ * поэтому повторный запуск не ломает схему.
+ */
+
+import type { SqlDatabase } from "./sqlDatabase";
+
+/** Один шаг миграции. */
+export interface Migration {
+  /** Версия схемы после применения (`PRAGMA user_version`). */
+  readonly version: number;
+  /** Применяет изменение схемы. */
+  readonly up: (db: SqlDatabase) => Promise<void>;
+}
+
+/** Схема версии 1: контакты и отдельная история взаимодействий. */
+const SCHEMA_V1_SQL = `
+CREATE TABLE contacts (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  note TEXT,
+  strategy TEXT NOT NULL,
+  minIntervalDays INTEGER NOT NULL,
+  recommendedIntervalDays INTEGER NOT NULL
+);
+
+CREATE TABLE interactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  contactId TEXT NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  initiator TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  occurredAt TEXT NOT NULL
+);
+
+CREATE INDEX idx_interactions_contact ON interactions(contactId, occurredAt);
+`;
+
+/** Упорядоченный список миграций (по возрастанию версии). */
+export const MIGRATIONS: readonly Migration[] = [
+  { version: 1, up: (db) => db.exec(SCHEMA_V1_SQL) },
+];
+
+/** Актуальная версия схемы (версия последней миграции). */
+export const SCHEMA_VERSION: number = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;
+
+/** Текущая версия схемы, записанная в БД (`PRAGMA user_version`). */
+export async function getSchemaVersion(db: SqlDatabase): Promise<number> {
+  const rows = await db.all<{ user_version: number }>("PRAGMA user_version");
+  return rows[0]?.user_version ?? 0;
+}
+
+/**
+ * Применяет все миграции, версия которых больше текущей. Идемпотентна:
+ * при актуальной схеме не выполняет ни одного изменения.
+ */
+export async function runMigrations(db: SqlDatabase): Promise<void> {
+  let current = await getSchemaVersion(db);
+  for (const migration of MIGRATIONS) {
+    if (migration.version <= current) {
+      continue;
+    }
+    await db.transaction(async () => {
+      await migration.up(db);
+      await db.exec(`PRAGMA user_version = ${migration.version}`);
+    });
+    current = migration.version;
+  }
+}

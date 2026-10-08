@@ -39,4 +39,17 @@ app (экраны, роутинг)
 5. **Не усложнять.** Без лишних абстракций и слоёв «на вырост»: новая абстракция
    появляется только со второй реализацией или реальной потребностью Stage.
 
+## Слой данных (Stage 2)
+
+- Порты репозиториев объявлены в `src/domain/ports.ts` (`ContactRepository`,
+  `InteractionRepository`); реализация — `src/data` (направление DATA → DOMAIN).
+- Продовый драйвер — `expo-sqlite` (`expoSqliteDriver.ts`) поверх минимального
+  интерфейса `SqlDatabase` (`sqlDatabase.ts`); тесты исполняют тот же SQL на
+  `node:sqlite` (тестовый драйвер `src/data/testing/`).
+- Схема и миграции — `migrations.ts` (forward-only, `PRAGMA user_version`);
+  `PRAGMA foreign_keys = ON` включается при открытии БД (`dataLayer.ts`).
+- Фиксация взаимодействия — data-level unit-of-work (`interactionRecorder.ts`):
+  запись `Interaction` и обновлённого `Contact` в одной транзакции. Расчёт
+  интервала остаётся в domain (`recordInteraction`), репозитории его не дублируют.
+
 Тестовая стратегия по слоям — `docs/TESTING.md`. Понятия domain — `docs/DOMAIN.md`.
