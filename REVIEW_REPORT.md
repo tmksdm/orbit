@@ -6,14 +6,25 @@ Stage 2 — Data Layer (порты репозиториев + Expo SQLite)
 
 ## Status
 
-Исправления по внешнему ревью внесены; **ожидает повторного внешнего ревью**.
-Проверки зелёные (lint / typecheck / tests). Stage 2 **не** объявлен approved,
-Stage 3 не начат.
+**APPROVED** внешним ревью (2026-10-08, коммит
+`03ba38db8bbfeabb1d60e5507e31cdaa93f4c5a7`). Проверки зелёные
+(lint / typecheck / tests); GitHub Actions на этом коммите — SUCCESS. Stage 2
+считается завершённым. Stage 3 не начат (подготовлен DRAFT-план
+`docs/plans/stage-3-ui.md`).
 
-Устранён также промах упаковки патча: патч `20261008-02` изменил сигнатуру
-`SqlDatabase.transaction`, но не содержал переписанный тестовый драйвер
-`nodeSqliteDriver.ts`, из-за чего CI на чистой сборке упал с `TS2322`
-(см. «CI follow-up»). Драйвер добавлен в патч `20261008-03`.
+## Approval (2026-10-08)
+
+Независимое ревью коммита `03ba38db8bbfeabb1d60e5507e31cdaa93f4c5a7` — **APPROVED**:
+
+- BLOCKER-01 — изоляция SQLite-транзакций (`withExclusiveTransactionAsync` +
+  транзакционный контекст `tx`) исправлена;
+- MINOR-01 — README актуализирован; MINOR-02 — REVIEW_REPORT актуализирован;
+- ошибка `TS2322` в тестовом драйвере устранена (см. «CI follow-up»);
+- GitHub Actions: lint, typecheck, tests — SUCCESS;
+- утверждённые правила Stage 1 сохранены; Stage 3 не начат.
+
+Ограничение (зафиксировано): работа нативного `expo-sqlite` на Android не
+проверена — проверка включена в Stage 3.
 
 ## Review baseline
 
@@ -215,10 +226,10 @@ Tests:       51 passed, 51 total
 
 ## Stage boundary
 
-- Stage 2 fixes complete; covered by integration tests (node:sqlite).
+- Stage 2 **APPROVED** (коммит `03ba38db`); covered by integration tests (node:sqlite).
 - No UI / features / due-logic / notifications / backend code added.
 - Domain layer remains pure TypeScript; Stage 1 rules unchanged.
-- Stage 2 NOT declared approved; Stage 3 NOT started.
+- Stage 3 NOT started; план Stage 3 — DRAFT (`docs/plans/stage-3-ui.md`).
 
 ## Suggested Git commit
 
@@ -251,5 +262,7 @@ git push
 
 ## Review handoff
 
-BLOCKER-01 и MINOR-01/02 исправлены, проверки зелёные. Требуется повторное
-внешнее ревью Stage 2. Stage 2 не approved, Stage 3 не начат.
+Stage 2 **APPROVED** внешним ревью 2026-10-08 (коммит `03ba38db`, GitHub Actions —
+SUCCESS). Stage 2 завершён. Следующий этап — Stage 3 (первый UI на Android):
+подготовлен DRAFT-план `docs/plans/stage-3-ui.md`; реализация не начата и
+стартует только после утверждения плана владельцем.
