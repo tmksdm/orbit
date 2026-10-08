@@ -4,6 +4,7 @@
  * интервала; подача «срок не рассчитан» (MINOR-01/§13 п.8).
  */
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { BackHandler } from "react-native";
 
 import ContactCardScreen from "../contact/[id]";
 import { computeDue } from "../../domain/due";
@@ -121,6 +122,10 @@ async function renderCard(services: OrbitServices) {
 }
 
 describe("карточка контакта (F3)", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("показывает имя, стратегию, блок «пора связаться», плитки и историю", async () => {
     const view = makeView({ daysUntilDue: 0, progressPercent: 100 });
     const { services } = makeServices(view, view);
@@ -161,20 +166,24 @@ describe("карточка контакта (F3)", () => {
       );
     });
 
-    // Сохранение без полного выбора недоступно (DESIGN.md §8):
+    // Сохранение недоступно, пока выбран не каждый из двух (DESIGN.md §8,
+    // REVIEW-01): кнопка неактивна, бизнес-операция не вызывается.
     const save = () => screen.getByRole("button", { name: "Сохранить" });
-    await act(async () => {
-      fireEvent.press(save());
-    });
+    expect(save().props.accessibilityState?.disabled).toBe(true);
     expect(recordInteraction).not.toHaveBeenCalled();
     expect(screen.getByText("Выберите инициатора и результат.")).toBeTruthy();
 
+    // Выбран только инициатор — сохранение всё ещё недоступно:
     await act(async () => {
       fireEvent.press(screen.getByTestId("initiator-mutual"));
     });
+    expect(save().props.accessibilityState?.disabled).toBe(true);
+
+    // Выбран результат — кнопка доступна, сохранение вызывает use-case:
     await act(async () => {
       fireEvent.press(screen.getByTestId("outcome-no_reply"));
     });
+    expect(save().props.accessibilityState?.disabled).toBe(false);
     await act(async () => {
       fireEvent.press(save());
     });
@@ -225,5 +234,58 @@ describe("карточка контакта (F3)", () => {
         "Взаимодействий пока нет. Отсчёт идёт от даты добавления контакта.",
       ),
     ).toBeTruthy();
+  });
+
+  it("аппаратная «Назад» при открытой шторке закрывает её без навигации (REVIEW-02)", async () => {
+    const view = makeView();
+    const { services } = makeServices(view, view);
+    let handler: (() => boolean) | null = null;
+    const remove = jest.fn();
+    const addSpy = jest.spyOn(
+      BackHandler,
+      "addEventListener",
+    ) as unknown as jest.Mock;
+    addSpy.mockImplementation((eventName: string, callback: () => boolean) => {
+      if (eventName !== "hardwareBackPress") {
+        throw new Error(`unexpected event: ${eventName}`);
+      }
+      handler = callback;
+      return { remove };
+    });
+    mockBack.mockClear();
+
+    const screen = await renderCard(services);
+
+    // Шторка закрыта: перехват НЕ зарегистрирован — действует стандартная
+    // навигация (событие доходит до системы, экран не вмешивается).
+    expect(addSpy).not.toHaveBeenCalled();
+
+    // Открываем шторку — регистрируется перехват аппаратной «Назад»:
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "Зафиксировать общение" }),
+      );
+    });
+    expect(screen.getByText("Кто был инициатором")).toBeTruthy();
+    expect(addSpy).toHaveBeenCalledWith(
+      "hardwareBackPress",
+      expect.any(Function),
+    );
+
+    // Первое нажатие «Назад» поглощается и закрывает шторку, навигации нет:
+    await act(async () => {
+      expect(handler?.()).toBe(true);
+    });
+    expect(remove).toHaveBeenCalled();
+    expect(screen.queryByText("Кто был инициатором")).toBeNull();
+    expect(mockBack).not.toHaveBeenCalled();
+
+    // Повторное открытие снова регистрирует перехват:
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "Зафиксировать общение" }),
+      );
+    });
+    expect(addSpy).toHaveBeenCalledTimes(2);
   });
 });

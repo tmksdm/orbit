@@ -15,18 +15,31 @@ import { createOrbitServices, type OrbitServices } from "./orbitServices";
 
 let cached: Promise<OrbitServices> | null = null;
 
-/** Открывает (один раз) БД и собирает сервисы. */
+/**
+ * Открывает (один раз) БД и собирает сервисы.
+ *
+ * При успешном запуске инициализация единственная (промис кешируется). При
+ * ошибке отклонённый промис в кеше НЕ остаётся (REVIEW-03): кеш сбрасывается,
+ * поэтому следующий вызов повторяет попытку, а не возвращает навсегда ту же
+ * ошибку.
+ */
 export function getOrbitServices(): Promise<OrbitServices> {
   if (cached === null) {
-    cached = openOrbitDatabase().then((data) =>
-      createOrbitServices({
-        contacts: data.contacts,
-        interactions: data.interactions,
-        recorder: data.recorder,
-        clock: systemClock,
-        createId: createUuid,
-      }),
-    );
+    cached = openOrbitDatabase()
+      .then((data) =>
+        createOrbitServices({
+          contacts: data.contacts,
+          interactions: data.interactions,
+          recorder: data.recorder,
+          clock: systemClock,
+          createId: createUuid,
+        }),
+      )
+      .catch((error: unknown) => {
+        // Повторная попытка возможна: неудачная инициализация не кешируется.
+        cached = null;
+        throw error;
+      });
   }
   return cached;
 }

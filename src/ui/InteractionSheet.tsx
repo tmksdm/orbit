@@ -74,11 +74,12 @@ export function InteractionSheet({
 }: InteractionSheetProps) {
   const [initiator, setInitiator] = useState<Initiator | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
-  const [attempted, setAttempted] = useState(false);
 
+  // REVIEW-01 / DESIGN.md §8: сохранение недоступно, пока выбран не каждый из
+  // двух (инициатор и результат) — кнопка неактивна, пока форма неполна.
   const incomplete = initiator === null || outcome === null;
-  const showError =
-    (attempted && incomplete) || (error !== null && error.length > 0);
+  const saveDisabled = saving || incomplete;
+  const showError = incomplete || (error !== null && error.length > 0);
 
   return (
     <View style={styles.scrim}>
@@ -119,12 +120,8 @@ export function InteractionSheet({
 
         <PrimaryButton
           label="Сохранить"
-          disabled={saving}
+          disabled={saveDisabled}
           onPress={() => {
-            if (incomplete) {
-              setAttempted(true);
-              return;
-            }
             if (initiator !== null && outcome !== null) {
               onSave(initiator, outcome);
             }

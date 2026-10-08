@@ -6,7 +6,14 @@
  * шторку. Бизнес-правил не содержит: расчёты — domain, запись — use-cases.
  */
 import { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  BackHandler,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Initiator, Outcome } from "../../domain/types";
@@ -88,6 +95,19 @@ export default function ContactCardScreen({
     const timer = setTimeout(() => setBanner(null), 7000); // §13 п.5 — 7 с из прототипа
     return () => clearTimeout(timer);
   }, [banner]);
+
+  // Аппаратная кнопка «Назад» Android (REVIEW-02, DESIGN.md §7): при открытой
+  // шторке первое нажатие закрывает её и НЕ выполняет навигацию (событие
+  // поглощается). При закрытой шторке обработчик не зарегистрирован — работает
+  // стандартный переход назад.
+  useEffect(() => {
+    if (!sheetVisible) return;
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      setSheetVisible(false);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [sheetVisible]);
 
   const saveInteraction = useCallback(
     async (initiator: Initiator, outcome: Outcome) => {
