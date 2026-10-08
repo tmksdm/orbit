@@ -36,6 +36,7 @@ interface Contact {
   strategy: ContactStrategy;
   minIntervalDays: number;
   recommendedIntervalDays: number;
+  createdAt?: string; // ISO 8601; у старых до-v2 записей отсутствует
 }
 
 interface Interaction {
@@ -168,7 +169,8 @@ interaction = them + good
 
 ## Реализация
 
-Чистые функции: `src/domain/scheduling.ts` (множители, пересчёт) и
+Чистые функции: `src/domain/scheduling.ts` (множители, пересчёт),
+`src/domain/due.ts` (правило «пора связаться», Stage 3) и
 `src/domain/contact.ts` (Contact, фабрика, применение взаимодействия).
 Изменение правил = изменение этого документа и таблицы множителей в одном
 коммите (`AGENTS.md`, правило 4).
@@ -178,7 +180,10 @@ interaction = them + good
 Раздел добавлен на этапе планирования Stage 3. Он НЕ меняет утверждённые правила
 изменения интервала выше (множители, `min = 2`, `no_reply` ×2.0, отсутствие верхней
 границы): due только читает текущий `recommendedIntervalDays` и является отдельной
-чистой доменной функцией. Код на текущем шаге не изменяется — правило проектируется.
+чистой доменной функцией. **Реализовано на Stage 3** (фаза 5): `src/domain/due.ts`
+(`computeDue` — чистая и детерминированная; «сегодня» передаётся параметром, домен
+без часов; перевод моментов ISO 8601 в локальные календарные даты —
+`src/services/clock.ts`).
 
 - **referenceDate** — дата **последнего** взаимодействия (`MAX(occurredAt)` как смысловое
   правило); если взаимодействий не было — дата создания контакта `createdAt`.

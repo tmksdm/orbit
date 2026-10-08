@@ -38,9 +38,21 @@ CREATE TABLE interactions (
 CREATE INDEX idx_interactions_contact ON interactions(contactId, occurredAt);
 `;
 
+/**
+ * Миграция v2: необязательное поле `createdAt` у контактов (план Stage 3,
+ * решение владельца — вариант A). Колонка nullable без default: значения
+ * существующих строк НЕ заполняются — реальная дата создания не восстанавливается
+ * (в том числе НЕ через MIN(occurredAt)). Новые контакты (Stage 3+) записывают
+ * фактическое время создания.
+ */
+const SCHEMA_V2_SQL = `
+ALTER TABLE contacts ADD COLUMN createdAt TEXT;
+`;
+
 /** Упорядоченный список миграций (по возрастанию версии). */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, up: (tx) => tx.exec(SCHEMA_V1_SQL) },
+  { version: 2, up: (tx) => tx.exec(SCHEMA_V2_SQL) },
 ];
 
 /** Актуальная версия схемы (версия последней миграции). */

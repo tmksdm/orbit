@@ -23,20 +23,30 @@ export interface ContactInput {
   readonly minIntervalDays?: number;
   /** Стартовый интервал; по умолчанию — INITIAL_INTERVAL_DAYS. */
   readonly recommendedIntervalDays?: number;
+  /**
+   * Дата создания (ISO 8601). Новые контакты (Stage 3+) получают фактическое
+   * время создания; для старых записей может не задаваться (вариант A —
+   * docs/plans/stage-3-ui.md, «Модель данных и миграция v2»).
+   */
+  readonly createdAt?: string;
 }
 
 /** Создаёт контакт без истории. */
 export function createContact(input: ContactInput): Contact {
   const minIntervalDays = input.minIntervalDays ?? DEFAULT_MIN_INTERVAL_DAYS;
   const initial = input.recommendedIntervalDays ?? INITIAL_INTERVAL_DAYS;
-  const contact: Contact = {
+  const base: Contact = {
     id: input.id,
     name: input.name,
     strategy: input.strategy,
     minIntervalDays,
     recommendedIntervalDays: Math.max(initial, minIntervalDays),
   };
-  return input.note === undefined ? contact : { ...contact, note: input.note };
+  const withCreatedAt =
+    input.createdAt === undefined ? base : { ...base, createdAt: input.createdAt };
+  return input.note === undefined
+    ? withCreatedAt
+    : { ...withCreatedAt, note: input.note };
 }
 
 /**

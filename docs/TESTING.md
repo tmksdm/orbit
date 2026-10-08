@@ -25,9 +25,16 @@
 ## Что уже есть
 
 - `src/domain/__tests__/scheduling.test.ts` — 30 domain-тестов Stage 1.
-- `src/data/__tests__/*.test.ts` — 16 интеграционных тестов Stage 2 (репозитории,
+- `src/data/__tests__/*.test.ts` — 20 интеграционных тестов Stage 2 (репозитории,
   миграции и идемпотентность, атомарная фиксация с rollback, foreign keys).
   Исполняются на реальном `node:sqlite` через тестовый драйвер
   `src/data/testing/nodeSqliteDriver.ts` — тот же SQL, что и прод (`expo-sqlite`).
-- `__tests__/index.test.tsx` — smoke-тест placeholder-экрана Stage 0
-  (Jest + jest-expo + React Native Testing Library).
+- `__tests__/index.test.tsx` — smoke-тест главного экрана (Jest + jest-expo +
+  React Native Testing Library).
+- **Stage 3:** unit due-логики (`src/domain/__tests__/due.test.ts`), unit
+  use-cases на подменных портах (`src/features/__tests__/orbitServices.test.ts`),
+  интеграционные миграция v2 + due (`src/data/__tests__/dueMigration.test.ts`),
+  компонентные RNTL: форма добавления (`src/app/__tests__/addContactScreen.test.tsx`)
+  и карточка контакта (`src/app/__tests__/contactCardScreen.test.tsx`).
+  В этих тестах `react-native-svg` заменяется стáбом через `jest.mock`
+  (нативные SVG-компоненты в тестовой среде недоступны).
