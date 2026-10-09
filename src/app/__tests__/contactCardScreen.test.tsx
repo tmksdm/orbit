@@ -44,8 +44,10 @@ jest.mock("expo-router", () => {
       useEffect(() => callback(), [callback]),
   };
 });
+// BUG-01: инсеты настраиваются из теста (нижняя safe-area влияет на панель шторки).
+const mockInsets = { top: 0, bottom: 0, left: 0, right: 0 };
 jest.mock("react-native-safe-area-context", () => ({
-  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  useSafeAreaInsets: () => mockInsets,
 }));
 
 function makeView(overrides?: {
@@ -124,6 +126,10 @@ async function renderCard(services: OrbitServices) {
 describe("карточка контакта (F3)", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    mockInsets.top = 0;
+    mockInsets.bottom = 0;
+    mockInsets.left = 0;
+    mockInsets.right = 0;
   });
 
   it("показывает имя, стратегию, блок «пора связаться», плитки и историю", async () => {
@@ -243,6 +249,23 @@ describe("карточка контакта (F3)", () => {
         screen.getByText("Не удалось сохранить. Попробуйте ещё раз."),
       ).toBeTruthy(),
     );
+  });
+
+  it("BUG-01: панель шторки учитывает нижнюю safe-area (кнопка над системной навигацией)", async () => {
+    mockInsets.bottom = 24;
+    const view = makeView();
+    const { services } = makeServices(view, view);
+    const screen = await renderCard(services);
+
+    await act(async () => {
+      fireEvent.press(
+        screen.getByRole("button", { name: "Зафиксировать общение" }),
+      );
+    });
+
+    // Нижний отступ = базовый 18 + нижний инсет (24) — не фиксированное число.
+    const panel = screen.getByTestId("interaction-sheet-panel");
+    expect(panel).toHaveStyle({ paddingBottom: 42 });
   });
 
   it("без истории и без createdAt: срок не рассчитан — без блока «пора», дата «—», особый текст истории", async () => {

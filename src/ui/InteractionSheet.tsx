@@ -6,6 +6,12 @@
  * ошибка сохранения, переданная экраном. Выбор — локальное состояние
  * представления; бизнес-правил нет.
  *
+ * BUG-01: нижний отступ панели вычисляется из безопасной области экрана
+ * (`useSafeAreaInsets().bottom`, `react-native-safe-area-context`) — кнопка
+ * «Сохранить» целиком остаётся над системной панелью навигации Android. Список
+ * опций при нехватке высоты (небольшой экран / увеличенный системный шрифт)
+ * прокручивается вертикально, кнопка закреплена и всегда доступна.
+ *
  * Реализация — абсолютный оверлей (затемнение + нижняя панель) без RN Modal:
  * минимально и одинаково предсказуемо на устройстве и в тестах. Родитель
  * монтирует шторку только на время показа — выбор сбрасывается при закрытии
@@ -13,7 +19,8 @@
  */
 
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Initiator, Outcome } from "../domain/types";
 import { PrimaryButton } from "./Buttons";
 import { initiatorLabel, outcomeLabel } from "./format";
@@ -21,6 +28,9 @@ import { colors, fontSize, radius, ripple } from "./tokens";
 
 const INITIATORS: readonly Initiator[] = ["me", "them", "mutual"];
 const OUTCOMES: readonly Outcome[] = ["good", "short", "no_reply"];
+
+/** Базовый нижний отступ панели (DESIGN.md §4); к нему добавляется safe-area. */
+const PANEL_BOTTOM_PADDING = 18;
 
 interface InteractionSheetProps {
   readonly onClose: () => void;
@@ -75,6 +85,7 @@ export function InteractionSheet({
   saving = false,
   error = null,
 }: InteractionSheetProps) {
+  const insets = useSafeAreaInsets();
   const [initiator, setInitiator] = useState<Initiator | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
@@ -92,27 +103,38 @@ export function InteractionSheet({
         onPress={onClose}
         accessibilityLabel="Закрыть"
       />
-      <View style={styles.panel}>
+      <View
+        testID="interaction-sheet-panel"
+        style={[
+          styles.panel,
+          { paddingBottom: PANEL_BOTTOM_PADDING + insets.bottom },
+        ]}
+      >
         <View style={styles.handle} />
         <Text style={styles.title}>Зафиксировать общение</Text>
 
-        <Text style={styles.label}>Кто был инициатором</Text>
-        <OptionGrid
-          testPrefix="initiator"
-          options={INITIATORS}
-          selected={initiator}
-          label={(v) => initiatorLabel[v]}
-          onSelect={setInitiator}
-        />
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <Text style={styles.label}>Кто был инициатором</Text>
+          <OptionGrid
+            testPrefix="initiator"
+            options={INITIATORS}
+            selected={initiator}
+            label={(v) => initiatorLabel[v]}
+            onSelect={setInitiator}
+          />
 
-        <Text style={styles.label}>Как прошло</Text>
-        <OptionGrid
-          testPrefix="outcome"
-          options={OUTCOMES}
-          selected={outcome}
-          label={(v) => outcomeLabel[v]}
-          onSelect={setOutcome}
-        />
+          <Text style={styles.label}>Как прошло</Text>
+          <OptionGrid
+            testPrefix="outcome"
+            options={OUTCOMES}
+            selected={outcome}
+            label={(v) => outcomeLabel[v]}
+            onSelect={setOutcome}
+          />
+        </ScrollView>
 
         {error !== null && error.length > 0 && (
           <Text style={styles.error}>{error}</Text>
@@ -148,9 +170,16 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.lg,
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 18,
     gap: 10,
     maxHeight: "88%",
+  },
+  // Опции прокручиваются при нехватке высоты (BUG-01, небольшие экраны /
+  // увеличенный системный шрифт); кнопка «Сохранить» закреплена ниже.
+  scroll: {
+    flexShrink: 1,
+  },
+  scrollContent: {
+    gap: 10,
   },
   handle: {
     alignSelf: "center",
