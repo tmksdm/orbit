@@ -1,5 +1,5 @@
 /**
- * Одноразовый SQLite-fixture для ручной Android-проверки Stage 4 (Фаза 5, MAJOR-01).
+ * Одноразовый SQLite-fixture для ручной Android-проверки Stage 4 (Фаза 5).
  *
  * Назначение — подготовить ТЕСТОВЫЕ ДАННЫЕ так, чтобы владелец получил реальное
  * уведомление **без многодневного ожидания**. Через UI это невозможно: новый контакт
@@ -45,18 +45,28 @@ export interface SeedDeps {
   readonly combineLocalDateTime: (date: string, time: string) => Date;
 }
 
-/** true, если фикстуру нужно применить (переменная окружения выставлена в «1»). */
+/**
+ * Чистая проверка значения флага (тестируется отдельно, без окружения и сборки).
+ * Включается лишь при строгом значении «1».
+ */
 export function shouldSeedDueContact(env: Record<string, string | undefined>): boolean {
   return env.EXPO_PUBLIC_SEED_DUE_CONTACT === "1";
 }
 
 /**
- * Читает окружение безопасно, без зависимости от типов Node (`process` доступен в
- * рантайме Metro/jest, но не обязан быть типизирован в проекте).
+ * true, если фикстуру нужно применить (переменная окружения сборки выставлена в «1»).
+ *
+ * ВАЖНО: переменную читаем СТАТИЧЕСКИМ dot-обращением
+ * `process.env.EXPO_PUBLIC_SEED_DUE_CONTACT` — только так Metro/Expo (babel-preset-expo)
+ * подставляет `EXPO_PUBLIC_*` в JS-бандл на этапе сборки. Косвенное чтение (через
+ * `globalThis`, динамический ключ или деструктуризацию) НЕ поддерживается и в сборке
+ * дало бы `undefined`. Полученное значение передаётся в чистую `shouldSeedDueContact`
+ * — так проверка флага остаётся тестируемой отдельно.
  */
 export function seedRequestedFromEnv(): boolean {
-  const g = globalThis as { process?: { env?: Record<string, string | undefined> } };
-  return shouldSeedDueContact(g.process?.env ?? {});
+  return shouldSeedDueContact({
+    EXPO_PUBLIC_SEED_DUE_CONTACT: process.env.EXPO_PUBLIC_SEED_DUE_CONTACT,
+  });
 }
 
 /**
