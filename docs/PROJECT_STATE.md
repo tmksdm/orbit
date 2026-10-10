@@ -211,7 +211,7 @@ Stage 1–3 не изменяются. Дорожная карта — план 
 
 - `seedRequestedFromEnv()` использует прямой статический доступ `process.env.EXPO_PUBLIC_SEED_DUE_CONTACT`;
   чистая проверка значения `shouldSeedDueContact(env)` остаётся для отдельного тестирования;
-- подтверждена фактическая подстановка при сборке JS-бандла. Проверка подстановки на реальной сборке JS-бандла (expo export --platform android --no-bytecode): значение переменной в бандле — seeded: [EXPO_PUBLIC_SEED_DUE_CONTACT|EXPO_PUBLIC_SEED_DUE_CONTACT:"1"|]; plain: [EXPO_PUBLIC_SEED_DUE_CONTACT|EXPO_PUBLIC_SEED_DUE_CONTACT:"1"|]; вхождений текста тестового контакта: seeded=0, plain=0. Сегмент expo/virtual/env получает значение из окружения сборки: для preview-seeded — 1 (фикстура активна), для preview — undefined (не активна).
+- подтверждена фактическая подстановка при сборке JS-бандла. Проверка подстановки на чистой сборке JS-бандла: seeded=[EXPO_PUBLIC_SEED_DUE_CONTACT|EXPO_PUBLIC_SEED_DUE_CONTACT:"1"|], plain=[EXPO_PUBLIC_SEED_DUE_CONTACT|EXPO_PUBLIC_SEED_DUE_CONTACT:void 0|]. Требуется дополнительное подтверждение активации; финальную проверку обеспечивает сборка владельца профиля preview-seeded.
 - алгоритмы, правила напоминаний и UI не менялись.
 
 Проверки (2026-10-10): `lint`/`typecheck` — чисто, `npm test` — 187/187. **Stage 4 не завершён**;

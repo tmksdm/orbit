@@ -98,7 +98,7 @@ preview, встроенный JS-бандл, работает без dev-сер�
 `process.env.EXPO_PUBLIC_SEED_DUE_CONTACT`; чистая проверка значения вынесена в
 `shouldSeedDueContact(env)` (тестируется отдельно, без окружения и сборки).
 
-Проверка подстановки на реальной сборке JS-бандла (expo export --platform android --no-bytecode): значение переменной в бандле — seeded: [EXPO_PUBLIC_SEED_DUE_CONTACT|EXPO_PUBLIC_SEED_DUE_CONTACT:"1"|]; plain: [EXPO_PUBLIC_SEED_DUE_CONTACT|EXPO_PUBLIC_SEED_DUE_CONTACT:"1"|]; вхождений текста тестового контакта: seeded=0, plain=0. Сегмент expo/virtual/env получает значение из окружения сборки: для preview-seeded — 1 (фикстура активна), для preview — undefined (не активна).
+Проверка подстановки на чистой сборке JS-бандла: seeded=[EXPO_PUBLIC_SEED_DUE_CONTACT|EXPO_PUBLIC_SEED_DUE_CONTACT:"1"|], plain=[EXPO_PUBLIC_SEED_DUE_CONTACT|EXPO_PUBLIC_SEED_DUE_CONTACT:void 0|]. Требуется дополнительное подтверждение активации; финальную проверку обеспечивает сборка владельца профиля preview-seeded.
 
 **Фактические результаты четырёх ручных действий владельца: ожидаются.** Заносятся
 сюда **после** реального прохождения (preview APK); PASS не проставляется без
