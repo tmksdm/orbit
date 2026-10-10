@@ -3,14 +3,14 @@
  * §4 — шапки рисуют экраны) и загрузка шрифтов Unbounded/Manrope (§10 —
  * решение этапа реализации: официальные пакеты Expo Google Fonts + expo-font).
  */
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { AppState } from "react-native";
 import { router, Stack, SplashScreen } from "expo-router";
 import { useFonts } from "expo-font";
 import { Unbounded_500Medium, Unbounded_600SemiBold, Unbounded_700Bold } from "@expo-google-fonts/unbounded";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
 import { getNotificationServices, setupNotifications } from "../features/runtime";
-import { consumeLastNotificationUrl, subscribeToNotificationResponses } from "../services/notifications";
+import { useNotificationNavigation } from "../features/useNotificationNavigation";
 import { colors } from "../ui/tokens";
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -51,20 +51,16 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, []);
 
-  // Навигация по нажатию на уведомление (§6.11): нажатие открывает главный экран
-  // («Пора связаться»). Не создаёт взаимодействий и не меняет интервалы.
-  useEffect(() => {
-    const openHome = (url: string) => {
-      if (url === "/") {
-        router.push("/");
-      }
-    };
-    const initial = consumeLastNotificationUrl();
-    if (initial !== null) {
-      openHome(initial);
-    }
-    return subscribeToNotificationResponses(openHome);
+  // Навигация по нажатию на уведомление (§6.11, MAJOR-01): переход выполняется
+  // только после готовности навигационного дерева (шрифты загружены — Layout
+  // отдаёт <Stack>); хук не теряет первоначальный ответ и обрабатывает его
+  // однократно. Нажатия при работающем приложении — через подписку. Не создаёт
+  // взаимодействий и не меняет интервалы.
+  const navReady = Boolean(loaded || error);
+  const goHome = useCallback(() => {
+    router.push("/");
   }, []);
+  useNotificationNavigation(navReady, goHome);
 
   if (!loaded && !error) {
     return null;

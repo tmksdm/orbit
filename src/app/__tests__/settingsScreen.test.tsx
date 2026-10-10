@@ -205,6 +205,40 @@ describe("экран настроек напоминаний (§10.11)", () => {
     await waitFor(() => expect(screen.getByText("08:30")).toBeTruthy());
   });
 
+  it("настройки сохранены, но sync не удался: предупреждение, без ошибки сохранения (MAJOR-02)", async () => {
+    const initial = view();
+    const { services } = makeServices(initial, {
+      setEnabled: jest.fn(async () => ({
+        status: "saved" as const,
+        sync: { ok: false as const, reason: "platform unavailable" },
+      })),
+    });
+    const screen = await renderScreen(services);
+
+    await act(async () => {
+      fireEvent(screen.getByTestId("reminders-switch"), "valueChange", true);
+    });
+
+    await waitFor(() => expect(screen.getByTestId("sync-warning")).toBeTruthy());
+    expect(
+      screen.getByText(/Настройки сохранены, но обновить расписание напоминаний не удалось/),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("settings-error")).toBeNull();
+  });
+
+  it("успешный sync: предупреждение не показывается", async () => {
+    const initial = view();
+    const { services } = makeServices(initial);
+    const screen = await renderScreen(services);
+
+    await act(async () => {
+      fireEvent(screen.getByTestId("reminders-switch"), "valueChange", true);
+    });
+
+    await waitFor(() => expect(screen.getByTestId("reminders-switch")).toBeTruthy());
+    expect(screen.queryByTestId("sync-warning")).toBeNull();
+  });
+
   it("отключение: setEnabled(false) вызван через use-case", async () => {
     const initial = view({ enabled: true });
     const { services, setEnabled } = makeServices(initial);

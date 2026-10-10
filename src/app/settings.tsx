@@ -44,6 +44,14 @@ function formatTime(date: Date): string {
   return `${h}:${m}`;
 }
 
+/**
+ * Ненавязчивое предупреждение: настройки сохранены, но согласовать расписание не
+ * удалось (MAJOR-02, §6.9). Не выдаётся за ошибку сохранения данных; повторная
+ * синхронизация произойдёт при следующем запуске/возврате в foreground.
+ */
+const SYNC_WARNING =
+  "Настройки сохранены, но обновить расписание напоминаний не удалось. Повторим позже.";
+
 /** «HH:MM» → Date (важен только часовой/минутный компонент для mode="time"). */
 function parseTime(time: string): Date {
   const parts = time.split(":");
@@ -62,6 +70,7 @@ export default function SettingsScreen({
   const [busy, setBusy] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncWarning, setSyncWarning] = useState<string | null>(null);
 
   const refresh = useCallback(async (svc: NotificationServices) => {
     setSettings(await svc.loadNotificationSettings());
@@ -97,10 +106,14 @@ export default function SettingsScreen({
       setError(null);
       try {
         const svc = await services();
-        await svc.setEnabled(next);
+        const result = await svc.setEnabled(next);
         await refresh(svc);
+        // MAJOR-02: настройки сохранены, но согласование могло не удаться —
+        // показываем ненавязчивое предупреждение, не ошибку сохранения данных.
+        setSyncWarning(result.sync.ok ? null : SYNC_WARNING);
       } catch {
         setError("Не удалось сохранить настройку. Попробуйте ещё раз.");
+        setSyncWarning(null);
       } finally {
         setBusy(false);
       }
@@ -116,10 +129,12 @@ export default function SettingsScreen({
       setError(null);
       try {
         const svc = await services();
-        await svc.setReminderTime(formatTime(date));
+        const result = await svc.setReminderTime(formatTime(date));
         await refresh(svc);
+        setSyncWarning(result.sync.ok ? null : SYNC_WARNING);
       } catch {
         setError("Не удалось сохранить время. Попробуйте ещё раз.");
+        setSyncWarning(null);
       } finally {
         setBusy(false);
       }
@@ -214,6 +229,12 @@ export default function SettingsScreen({
                 Linking.openSettings();
               }}
             />
+          )}
+
+          {syncWarning !== null && (
+            <Text testID="sync-warning" style={styles.syncWarning}>
+              {syncWarning}
+            </Text>
           )}
 
           {error !== null && (
@@ -312,6 +333,14 @@ const styles = StyleSheet.create({
     fontSize: fontSize.small,
     fontWeight: "600",
     color: colors.due,
+    lineHeight: fontSize.small * 1.4,
+  },
+  syncWarning: {
+    fontFamily: "Manrope_500Medium",
+    fontSize: fontSize.small,
+    fontWeight: "500",
+    color: colors.muted,
+    paddingHorizontal: 2,
     lineHeight: fontSize.small * 1.4,
   },
   error: {
