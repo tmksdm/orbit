@@ -8,6 +8,12 @@
  * Stage 3/4). БД открывается один раз на запуск приложения; согласование
  * напоминаний (`NotificationServices`) создаётся один раз и делит то же
  * соединение с БД.
+ *
+ * Тестовая фикстура Stage 4 (Фаза 5): при сборке профиля `preview-seeded`
+ * (переменная `EXPO_PUBLIC_SEED_DUE_CONTACT=1`) до сборки сервисов создаётся один
+ * просроченный тестовый контакт — чтобы владелец получил реальное уведомление без
+ * многодневного ожидания. В обычных сборках флаг не выставлен, фикстура не
+ * выполняется и ничего не меняет (`./testSeed`).
  */
 import { openOrbitDatabase } from "../data";
 import { combineLocalDateTime, systemClock, toLocalTime } from "../services/clock";
@@ -18,6 +24,7 @@ import {
   type NotificationServices,
 } from "./notificationServices";
 import { createOrbitServices, type OrbitServices } from "./orbitServices";
+import { seedOverdueContact, seedRequestedFromEnv } from "./testSeed";
 
 /** Собранные сервисы приложения. */
 export interface OrbitRuntime {
@@ -39,7 +46,16 @@ let notificationServices: Promise<NotificationServices> | null = null;
 export function getRuntime(): Promise<OrbitRuntime> {
   if (cached === null) {
     cached = openOrbitDatabase()
-      .then((data) => {
+      .then(async (data) => {
+        // Тестовая фикстура (только `preview-seeded`): один просроченный контакт,
+        // чтобы уведомление пришло без многодневного ожидания. Идемпотентно.
+        if (seedRequestedFromEnv()) {
+          await seedOverdueContact({
+            contacts: data.contacts,
+            clock: systemClock,
+            combineLocalDateTime,
+          });
+        }
         const notifications = createNotificationServices({
           contacts: data.contacts,
           interactions: data.interactions,

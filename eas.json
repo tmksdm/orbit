@@ -17,6 +17,15 @@
         "buildType": "apk"
       }
     },
+    "preview-seeded": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SEED_DUE_CONTACT": "1"
+      }
+    },
     "production": {
       "autoIncrement": true
     }
