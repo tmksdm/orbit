@@ -3,9 +3,9 @@
  * §4 — шапки рисуют экраны) и загрузка шрифтов Unbounded/Manrope (§10 —
  * решение этапа реализации: официальные пакеты Expo Google Fonts + expo-font).
  */
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppState } from "react-native";
-import { router, Stack, SplashScreen } from "expo-router";
+import { router, Stack, SplashScreen, useNavigationContainerRef } from "expo-router";
 import { useFonts } from "expo-font";
 import { Unbounded_500Medium, Unbounded_600SemiBold, Unbounded_700Bold } from "@expo-google-fonts/unbounded";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
@@ -51,12 +51,32 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, []);
 
-  // Навигация по нажатию на уведомление (§6.11, MAJOR-01): переход выполняется
-  // только после готовности навигационного дерева (шрифты загружены — Layout
-  // отдаёт <Stack>); хук не теряет первоначальный ответ и обрабатывает его
-  // однократно. Нажатия при работающем приложении — через подписку. Не создаёт
-  // взаимодействий и не меняет интервалы.
-  const navReady = Boolean(loaded || error);
+  // Навигация по нажатию на уведомление (§6.11, MAJOR-01). Готовность навигации
+  // определяем по навигационному контейнеру (`useNavigationContainerRef` + `isReady()`),
+  // а НЕ по загрузке шрифтов: контейнер/root navigator готовы только после
+  // монтирования <Stack>, до этого `router.push` теряется. Хук не теряет
+  // первоначальный ответ, буферизует события до готовности и обрабатывает каждое
+  // событие однократно. Не создаёт взаимодействий и не меняет интервалы.
+  const navigationRef = useNavigationContainerRef();
+  const [navReady, setNavReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    let frame: number | null = null;
+    const check = () => {
+      if (cancelled) return;
+      if (navigationRef.isReady()) {
+        setNavReady(true);
+        return;
+      }
+      frame = requestAnimationFrame(check);
+    };
+    check();
+    return () => {
+      cancelled = true;
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [navigationRef]);
+
   const goHome = useCallback(() => {
     router.push("/");
   }, []);

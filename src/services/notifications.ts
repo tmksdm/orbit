@@ -279,37 +279,52 @@ export function configureNotificationHandler(): void {
   });
 }
 
+/**
+ * Нажатие по уведомлению: `id` — идентификатор ответа (для устранения двойной
+ * обработки одного события из двух источников), `url` — `data.url` или null.
+ */
+export interface NotificationTap {
+  readonly id: string;
+  readonly url: string | null;
+}
+
 /** Читает `data.url` ответа на уведомление; иначе null. */
 function responseUrl(response: Notifications.NotificationResponse): string | null {
   const url = response.notification.request.content.data?.url;
   return typeof url === 'string' ? url : null;
 }
 
+/** Преобразует ответ в `NotificationTap` (id + url). */
+function toTap(response: Notifications.NotificationResponse): NotificationTap {
+  return { id: response.notification.request.identifier, url: responseUrl(response) };
+}
+
 /**
  * Забирает и ГАСИТ последний ответ на уведомление (§6.11): нажатие открывает
- * главный экран. Возвращает `data.url` или null; последний ответ очищается,
- * чтобы навигация не повторялась при следующих запусках.
+ * главный экран. Возвращает `NotificationTap` или null; последний ответ
+ * очищается, чтобы навигация не повторялась при следующих запусках. `id` нужен
+ * вызывающему, чтобы не обрабатывать одно событие дважды, если оно пришло и
+ * через слушатель, и через `getLastNotificationResponse`.
  */
-export function consumeLastNotificationUrl(): string | null {
+export function consumeLastNotificationResponse(): NotificationTap | null {
   const response = Notifications.getLastNotificationResponse();
   if (response === null) {
     return null;
   }
-  const url = responseUrl(response);
+  const tap = toTap(response);
   Notifications.clearLastNotificationResponse();
-  return url;
+  return tap;
 }
 
 /**
  * Подписка на нажатие по уведомлению (§6.11). Возвращает функцию отписки.
  * Изоляция нативного API — здесь (как и все прочие вызовы `expo-notifications`).
  */
-export function subscribeToNotificationResponses(handler: (url: string) => void): () => void {
+export function subscribeToNotificationResponses(
+  handler: (tap: NotificationTap) => void,
+): () => void {
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-    const url = responseUrl(response);
-    if (url !== null) {
-      handler(url);
-    }
+    handler(toTap(response));
   });
   return () => subscription.remove();
 }
