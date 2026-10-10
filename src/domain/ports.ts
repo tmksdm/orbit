@@ -9,6 +9,7 @@
  * (docs/plans/stage-2-data.md).
  */
 
+import type { NotificationSettings } from "./notifications";
 import type { Contact, Interaction } from "./types";
 
 /** Хранилище контактов. */
@@ -27,4 +28,15 @@ export interface InteractionRepository {
   add(contactId: string, interaction: Interaction): Promise<void>;
   /** История контакта, отсортированная по `occurredAt` (по возрастанию). */
   listByContact(contactId: string): Promise<Interaction[]>;
+}
+
+/**
+ * Хранилище настроек напоминаний Stage 4 (одна строка, id = 1). Интерфейс
+ * объявляет domain, реализацию даёт data (DATA → DOMAIN).
+ */
+export interface NotificationSettingsRepository {
+  /** Текущие настройки; при отсутствии строки — значения по умолчанию. */
+  load(): Promise<NotificationSettings>;
+  /** Сохраняет настройки (upsert единственной строки id = 1). */
+  save(settings: NotificationSettings): Promise<void>;
 }

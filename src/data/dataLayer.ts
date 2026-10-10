@@ -5,11 +5,16 @@
  * можно использовать в интеграционных тестах и в любой среде без нативного модуля.
  */
 
-import type { ContactRepository, InteractionRepository } from "../domain/ports";
+import type {
+  ContactRepository,
+  InteractionRepository,
+  NotificationSettingsRepository,
+} from "../domain/ports";
 import { createContactRepository } from "./contactRepository";
 import { createInteractionRecorder, type InteractionRecorder } from "./interactionRecorder";
 import { createInteractionRepository } from "./interactionRepository";
 import { runMigrations } from "./migrations";
+import { createNotificationSettingsRepository } from "./notificationSettingsRepository";
 import type { SqlDatabase } from "./sqlDatabase";
 
 /** Собранный слой данных приложения. */
@@ -18,6 +23,7 @@ export interface OrbitDataLayer {
   readonly contacts: ContactRepository;
   readonly interactions: InteractionRepository;
   readonly recorder: InteractionRecorder;
+  readonly notificationSettings: NotificationSettingsRepository;
 }
 
 /**
@@ -35,5 +41,6 @@ export function createDataLayer(db: SqlDatabase): OrbitDataLayer {
   const contacts = createContactRepository(db);
   const interactions = createInteractionRepository(db);
   const recorder = createInteractionRecorder(db);
-  return { db, contacts, interactions, recorder };
+  const notificationSettings = createNotificationSettingsRepository(db);
+  return { db, contacts, interactions, recorder, notificationSettings };
 }

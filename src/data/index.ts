@@ -21,6 +21,7 @@ export { createContactRepository } from "./contactRepository";
 export { createInteractionRepository } from "./interactionRepository";
 export type { InteractionRecorder } from "./interactionRecorder";
 export { ContactNotFoundError, createInteractionRecorder } from "./interactionRecorder";
+export { createNotificationSettingsRepository } from "./notificationSettingsRepository";
 
 /** Имя файла локальной БД приложения. */
 export const DATABASE_NAME = "orbit.db";

@@ -49,10 +49,28 @@ const SCHEMA_V2_SQL = `
 ALTER TABLE contacts ADD COLUMN createdAt TEXT;
 `;
 
+/**
+ * Миграция v3 (Stage 4): таблица настроек напоминаний — одна строка (id = 1).
+ * `anchorDate` NULL = цикл не начат; `reminderTime` по умолчанию '19:00'
+ * (docs/plans/stage-4-notifications.md, §6.3). Существующие данные не затрагиваются.
+ */
+const SCHEMA_V3_SQL = `
+CREATE TABLE notification_settings (
+  id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+  enabled INTEGER NOT NULL DEFAULT 0,
+  anchorDate TEXT,
+  reminderTime TEXT NOT NULL DEFAULT '19:00'
+);
+
+INSERT INTO notification_settings (id, enabled, anchorDate, reminderTime)
+  VALUES (1, 0, NULL, '19:00');
+`;
+
 /** Упорядоченный список миграций (по возрастанию версии). */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, up: (tx) => tx.exec(SCHEMA_V1_SQL) },
   { version: 2, up: (tx) => tx.exec(SCHEMA_V2_SQL) },
+  { version: 3, up: (tx) => tx.exec(SCHEMA_V3_SQL) },
 ];
 
 /** Актуальная версия схемы (версия последней миграции). */
