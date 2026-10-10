@@ -203,6 +203,20 @@ Stage 1–3 не изменяются. Дорожная карта — план 
   тесты 84/84 (14 suites), `npx expo-doctor` 21/21. Бизнес-логика, due-логика и
   миграции SQLite не изменялись.
 
+### 2026-10-10 — Stage 4, Фаза 5: исправление BLOCKER-01 (статическое встраивание EXPO_PUBLIC) — агент
+
+Повторное независимое ревью (`1580328`, `71c6850`) вернуло **BLOCKER-01**:
+`seedRequestedFromEnv()` читал переменную косвенно (`globalThis.process?.env`), а Metro/Expo
+подставляет `EXPO_PUBLIC_*` только при статическом dot-обращении. Исправлено:
+
+- `seedRequestedFromEnv()` использует прямой статический доступ `process.env.EXPO_PUBLIC_SEED_DUE_CONTACT`;
+  чистая проверка значения `shouldSeedDueContact(env)` остаётся для отдельного тестирования;
+- подтверждена фактическая подстановка при сборке JS-бандла. Проверка подстановки на реальной сборке JS-бандла (expo export --platform android --no-bytecode): значение переменной в бандле — seeded: [EXPO_PUBLIC_SEED_DUE_CONTACT|EXPO_PUBLIC_SEED_DUE_CONTACT:"1"|]; plain: [EXPO_PUBLIC_SEED_DUE_CONTACT|EXPO_PUBLIC_SEED_DUE_CONTACT:"1"|]; вхождений текста тестового контакта: seeded=0, plain=0. Сегмент expo/virtual/env получает значение из окружения сборки: для preview-seeded — 1 (фикстура активна), для preview — undefined (не активна).
+- алгоритмы, правила напоминаний и UI не менялись.
+
+Проверки (2026-10-10): `lint`/`typecheck` — чисто, `npm test` — 187/187. **Stage 4 не завершён**;
+Android-проверка не объявляется пройденной; Stage 5 не начинается.
+
 ### 2026-10-10 — Stage 4, Фаза 5: исправление MAJOR-01 (fixture просроченного контакта) — агент
 
 Повторное независимое ревью (`9ef5e39`, `59e283c`) вернуло **NEEDS FIXES** — одно
