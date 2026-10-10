@@ -5,30 +5,32 @@
 
 ## Текущий Stage
 Stage 4 — Local Notifications. План — **APPROVED** (`docs/plans/stage-4-notifications.md`).
-Реализация **начата** (поручение владельца 2026-10-10). Фаза 1 (domain + миграция v3)
-**одобрена** независимым ревью; выполнена **Фаза 2** (адаптер `expo-notifications` +
-`clock.combineLocalDateTime` + зависимость `expo-notifications`) — ожидает независимого
+Реализация **начата** (поручение владельца 2026-10-10). Фазы 1 и 2 **одобрены**
+независимым ревью; выполнена **Фаза 3** (`syncNotifications` — серилизуемый drain-цикл —
+и use-cases `loadNotificationSettings`/`setEnabled`/`setReminderTime`; сборка в
+`runtime.ts`; согласование при старте/foreground в `_layout.tsx`) — ожидает независимого
 ревью.
 
 ## Статус
 - Stage 1–3 — **APPROVED** (Stage 3 — финальный коммит `ba96436`).
 - План Stage 4 — **APPROVED** (коммит `9e92df7`); решения владельца Q1–Q6 зафиксированы.
 - Stage 4, Фаза 1 — **APPROVED** независимым ревью (коммиты `2a07bad`, `b22a54f`).
-- Stage 4, Фаза 2 — ревью вернуло **NEEDS FIXES**; замечания (MAJOR-01 адресная
-  отмена, MINOR-02 валидация дат, заметка по npm-кэшу в `AGENTS.md`) исправлены,
-  проверки зелёные, **запушены в `main`**; ожидается повторное ревью. Следующая часть
-  — только после разрешения владельца.
+- Stage 4, Фаза 2 — **APPROVED** независимым ревью (коммит `a8ec56e`; MAJOR-01,
+  MINOR-02 и заметка по npm-кэшу закрыты).
+- Stage 4, Фаза 3 реализована, проверки зелёные, **запушена в `main`**; ожидается
+  независимое ревью. Следующая часть — только после разрешения владельца.
 - Открытых вопросов и блокирующих замечаний нет.
 
 ## Последний принятый результат
-Фаза 1 Stage 4 (APPROVED ревью, коммиты `2a07bad`, `b22a54f`). Фаза 2: адаптер
-`expo-notifications` (`src/services/notifications.ts`), `clock.combineLocalDateTime`,
-зависимость `expo-notifications ~57.0.22`; проверки lint/typecheck/test — зелёные.
+Фазы 1–2 Stage 4 (APPROVED ревью). Фаза 3: `src/features/notificationServices.ts`
+(серилизуемый `syncNotifications` + use-cases настроек), хук `onInteractionRecorded`,
+`runtime` (`getRuntime`/`getNotificationServices`), стартовая/foreground-синхронизация
+в `_layout.tsx`; проверки lint/typecheck/test — зелёные (160/160).
 
 ## Текущая задача
-Остановка после исправлений по ревью Фазы 2 — ожидание повторного независимого ревью
-и разрешения владельца на следующую часть (Фаза 3 — `syncNotifications` и use-cases
-настроек).
+Остановка после Фазы 3 в ожидании независимого ревью и разрешения владельца на
+следующую часть (Фаза 4 — экран настроек `settings.tsx`, вход с главного экрана,
+навигация по нажатию на уведомление).
 
 ## Workflow
 Агент работает напрямую в `main`: проверки → просмотр `git diff` → commit → push.
