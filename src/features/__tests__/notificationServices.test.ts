@@ -381,6 +381,27 @@ describe("syncNotifications — согласование по различиям
     expect(h.platform.cancelCalls).toEqual(["d2"]);
     expect(h.platform.scheduled.filter((s) => s.cycleDate === "2026-10-13")).toHaveLength(1);
   });
+
+  it("дубли cycleDate: остаётся актуальный, устаревший отменяется, лишнего schedule нет (MINOR-01)", async () => {
+    const h = makeHarness({
+      entries: [{ contact: contactDue("a", "2026-10-13"), due: "2026-10-13", interval: 2 }],
+      settings: { enabled: true, anchorDate: "2026-10-13" },
+    });
+    // Первое устарело (count=5), второе полностью совпадает с желаемым (count=1).
+    h.platform.scheduled = [
+      { id: "stale", cycleDate: "2026-10-13", count: 5, fireAtMs: fireAt("2026-10-13") },
+      { id: "actual", cycleDate: "2026-10-13", count: 1, fireAtMs: fireAt("2026-10-13") },
+    ];
+
+    const result = await h.services.syncNotifications();
+
+    expect(h.platform.cancelCalls).toEqual(["stale"]); // устаревший дубль снят
+    expect(h.platform.scheduled.find((s) => s.cycleDate === "2026-10-13")?.id).toBe("actual");
+    expect(h.platform.scheduled.filter((s) => s.cycleDate === "2026-10-13")).toHaveLength(1);
+    // actual совпал с желаемым → kept; extra schedule только для 2026-10-16.
+    expect(h.platform.scheduleCalls).toBe(1);
+    expect(result).toEqual({ ok: true, added: 1, removed: 1, kept: 1 });
+  });
 });
 
 describe("syncNotifications — конкурентность и разрешения (§10.7, BLOCKER-03)", () => {
@@ -490,9 +511,40 @@ describe("syncNotifications — конкурентность и разрешен
 
     const result = await h.services.setEnabled(true);
 
-    expect(result).toEqual({ status: "permissionDenied", canAskAgain: false });
+    expect(result.status).toBe("permissionDenied");
+    if (result.status !== "permissionDenied") return;
+    expect(result.canAskAgain).toBe(false);
+    expect(result.sync.ok).toBe(true); // пустое расписание — очистка успешна
     expect(h.settings.get().enabled).toBe(false);
     expect(h.platform.scheduleCalls).toBe(0);
+  });
+
+  it("setEnabled(true) при отказе в разрешении снимает старое расписание Orbit, сохраняя anchor и время (MAJOR-01)", async () => {
+    const h = makeHarness({
+      settings: { enabled: false, anchorDate: "2026-10-13", reminderTime: "08:30" },
+      permission: { granted: false, canAskAgain: true },
+    });
+    h.platform.requestResult = { granted: false, canAskAgain: true };
+    // Ранее установленные и показанное «наши» (например, от прежнего состояния).
+    h.platform.scheduled = [
+      { id: "old1", cycleDate: "2026-10-13", count: 1, fireAtMs: fireAt("2026-10-13") },
+      { id: "old2", cycleDate: "2026-10-16", count: 1, fireAtMs: fireAt("2026-10-16") },
+    ];
+    h.platform.presented = [{ id: "p", cycleDate: "2026-10-13", count: 1 }];
+
+    const result = await h.services.setEnabled(true);
+
+    expect(result.status).toBe("permissionDenied");
+    if (result.status !== "permissionDenied") return;
+    expect(result.canAskAgain).toBe(true);
+    expect(result.sync).toEqual({ ok: true, added: 0, removed: 2, kept: 0 });
+    expect(h.platform.scheduled).toHaveLength(0); // старое расписание снято
+    expect(h.platform.cancelCalls.sort()).toEqual(["old1", "old2"]);
+    expect(h.platform.dismissCalls).toEqual(["p"]); // показанное удалено
+    expect(h.platform.scheduleCalls).toBe(0);
+    expect(h.settings.get().enabled).toBe(false);
+    expect(h.settings.get().anchorDate).toBe("2026-10-13"); // anchor сохранён
+    expect(h.settings.get().reminderTime).toBe("08:30"); // время сохранено
   });
 
   it("setEnabled(true) при выданном разрешении: включает и планирует (anchor сразу)", async () => {

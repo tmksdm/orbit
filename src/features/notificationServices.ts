@@ -56,7 +56,16 @@ export interface NotificationSettingsView {
 /** Результат сохранения настроек. */
 export type SettingsUpdateResult =
   | { readonly status: "saved"; readonly sync: SyncResult }
-  | { readonly status: "permissionDenied"; readonly canAskAgain: boolean };
+  | {
+      readonly status: "permissionDenied";
+      readonly canAskAgain: boolean;
+      /**
+       * Результат согласования с финальным ВЫКЛЮЧЕННЫМ состоянием (MAJOR-01):
+       * снятие ранее установленных/показанных «наших». `ok:false` означает, что
+       * очистка не удалась — ошибка НЕ маскируется ложным успехом (§6.9).
+       */
+      readonly sync: SyncResult;
+    };
 
 /** Use-cases напоминаний, доступные UI. */
 export interface NotificationServices {
@@ -220,10 +229,24 @@ export function createNotificationServices(deps: NotificationServicesDeps): Noti
     const installedByDate = new Map<string, (typeof installed)[number]>();
     const duplicates: string[] = [];
     for (const item of installed) {
-      if (installedByDate.has(item.cycleDate)) {
-        duplicates.push(item.id);
-      } else {
+      const existing = installedByDate.get(item.cycleDate);
+      if (existing === undefined) {
         installedByDate.set(item.cycleDate, item);
+        continue;
+      }
+      // Дубль одного cycleDate (MINOR-01): каноническим оставляем уведомление,
+      // полностью совпадающее с желаемым (момент и count); если такого нет —
+      // первый (его затем перепланирует diff-шаг). Остальные — на отмену.
+      const want = desired.get(item.cycleDate);
+      const existingMatches =
+        want !== undefined && existing.fireAtMs === want.fireAtMs && existing.count === want.count;
+      const itemMatches =
+        want !== undefined && item.fireAtMs === want.fireAtMs && item.count === want.count;
+      if (itemMatches && !existingMatches) {
+        duplicates.push(existing.id); // прежний канонический устарел
+        installedByDate.set(item.cycleDate, item);
+      } else {
+        duplicates.push(item.id);
       }
     }
 
@@ -324,8 +347,13 @@ export function createNotificationServices(deps: NotificationServicesDeps): Noti
       permission = await platform.requestPermission();
     }
     if (!permission.granted) {
+      // enabled остаётся false; anchor и время сохраняются. Согласуем с финальным
+      // ВЫКЛЮЧЕННЫМ состоянием (MAJOR-01): ранее установленные и показанные «наши»
+      // снимаются, чужие не затрагиваются. Ошибка очистки не маскируется — sync
+      // возвращает { ok:false } и пробрасывается вызывающему (§6.9).
       await settings.save({ ...current, enabled: false });
-      return { status: "permissionDenied", canAskAgain: permission.canAskAgain };
+      const sync = await syncNotifications();
+      return { status: "permissionDenied", canAskAgain: permission.canAskAgain, sync };
     }
     // Намерение сохраняем; anchor вычислит и сохранит согласование (шаг 6).
     await settings.save({ ...current, enabled: true });
