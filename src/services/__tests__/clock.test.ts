@@ -33,6 +33,21 @@ describe("combineLocalDateTime", () => {
     expect(() => combineLocalDateTime("2026-10-10", "19")).toThrow();
   });
 
+  it("нереальная календарная дата отвергается (MINOR-02)", () => {
+    expect(() => combineLocalDateTime("2026-02-31", "19:00")).toThrow();
+    expect(() => combineLocalDateTime("2026-02-29", "19:00")).toThrow(); // не високосный
+    expect(() => combineLocalDateTime("2026-04-31", "19:00")).toThrow();
+    expect(() => combineLocalDateTime("2026-13-01", "19:00")).toThrow();
+    expect(() => combineLocalDateTime("2026-00-10", "19:00")).toThrow();
+  });
+
+  it("високосный 29 февраля принимается (MINOR-02)", () => {
+    const d = combineLocalDateTime("2028-02-29", "19:00");
+    expect(d.getFullYear()).toBe(2028);
+    expect(d.getMonth()).toBe(1);
+    expect(d.getDate()).toBe(29);
+  });
+
   it("валидное время всегда даёт определённый момент (в т.ч. пограничные даты DST)", () => {
     // Точный сдвиг DST зависит от зоны устройства; проверяем, что функция не
     // бросает и возвращает валидный момент (нормализация вперёд — поведение Date).

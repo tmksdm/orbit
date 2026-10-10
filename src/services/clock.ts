@@ -55,6 +55,14 @@ export function combineLocalDateTime(date: string, time: string): Date {
   if (!validDate) {
     throw new Error(`Invalid local date (expected YYYY-MM-DD): ${date}`);
   }
+  // Реальная календарная дата: `2026-02-31` или `2026-02-29` (не високосный)
+  // отвергаются, `2028-02-29` принимается (MINOR-02).
+  const probe = new Date(year, month - 1, day);
+  const isRealDate =
+    probe.getFullYear() === year && probe.getMonth() === month - 1 && probe.getDate() === day;
+  if (!isRealDate) {
+    throw new Error(`Invalid calendar date: ${date}`);
+  }
   const validTime =
     timeParts.length === 2 &&
     Number.isInteger(hours) &&

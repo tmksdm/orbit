@@ -104,6 +104,19 @@ npm test           # jest (jest-expo + @testing-library/react-native)
 npm run format     # prettier --write .
 ```
 
+## Инфраструктура песочницы (Genspark)
+
+Системный npm-кэш `/opt/npm-cache` в песочнице может быть недоступен на запись —
+установка зависимостей падает с `EACCES` (`permission denied` при записи в кэш).
+Используй записываемый кэш:
+
+```bash
+export npm_config_cache="$HOME/.npm"
+```
+
+Хранение или восстановление `node_modules` через AI Drive **не внедрять** — вариант
+исследован и пока отклонён.
+
 ## Передача файлов между пользователем и агентом
 
 **Основной канал — GitHub.** Изменения коммитятся и пушатся **напрямую в `main`**

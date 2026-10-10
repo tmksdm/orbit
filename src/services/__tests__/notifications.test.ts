@@ -153,18 +153,42 @@ describe('createNotificationPlatform — вызовы платформы', () =>
     ]);
   });
 
-  it('cancelNotifications/cancelAllOurs/dismissNotifications вызывают платформу', async () => {
+  it('cancelNotifications/dismissNotifications вызывают платформу по id', async () => {
     mocked.cancelScheduledNotificationAsync.mockResolvedValue(undefined);
-    mocked.cancelAllScheduledNotificationsAsync.mockResolvedValue(undefined);
     mocked.dismissNotificationAsync.mockResolvedValue(undefined);
     const platform = createNotificationPlatform();
     await platform.cancelNotifications(['x', 'y']);
     expect(mocked.cancelScheduledNotificationAsync).toHaveBeenCalledTimes(2);
     expect(mocked.cancelScheduledNotificationAsync).toHaveBeenNthCalledWith(1, 'x');
-    await platform.cancelAllOurs();
-    expect(mocked.cancelAllScheduledNotificationsAsync).toHaveBeenCalledTimes(1);
     await platform.dismissNotifications(['p']);
     expect(mocked.dismissNotificationAsync).toHaveBeenCalledWith('p');
+  });
+
+  it('cancelAllOurs отменяет ТОЛЬКО наши уведомления (MAJOR-01), чужие не трогает', async () => {
+    mocked.cancelScheduledNotificationAsync.mockResolvedValue(undefined);
+    const when = new Date(2026, 9, 10, 19, 0);
+    mocked.getAllScheduledNotificationsAsync.mockResolvedValue([
+      {
+        identifier: 'ours-1',
+        content: { data: { kind: NOTIFICATION_KIND, cycleDate: '2026-10-10', count: 1 } },
+        trigger: { type: 'date', date: when },
+      },
+      { identifier: 'foreign', content: { data: { kind: 'other' } }, trigger: { type: 'date', date: when } },
+      {
+        identifier: 'ours-2',
+        content: { data: { kind: NOTIFICATION_KIND, cycleDate: '2026-10-13', count: 2 } },
+        trigger: { type: 'date', date: when },
+      },
+    ]);
+
+    await createNotificationPlatform().cancelAllOurs();
+
+    // Глобальная отмена не используется — только адресная по id наших.
+    expect(mocked.cancelAllScheduledNotificationsAsync).not.toHaveBeenCalled();
+    expect(mocked.cancelScheduledNotificationAsync).toHaveBeenCalledTimes(2);
+    expect(mocked.cancelScheduledNotificationAsync).toHaveBeenCalledWith('ours-1');
+    expect(mocked.cancelScheduledNotificationAsync).toHaveBeenCalledWith('ours-2');
+    expect(mocked.cancelScheduledNotificationAsync).not.toHaveBeenCalledWith('foreign');
   });
 
   it('schedule планирует разовое уведомление с маркером и DATE-триггером', async () => {

@@ -219,7 +219,15 @@ export function createNotificationPlatform(): NotificationPlatform {
     },
 
     async cancelAllOurs(): Promise<void> {
-      await Notifications.cancelAllScheduledNotificationsAsync();
+      // Адресная отмена: только уведомления с нашим маркером (MAJOR-01). НЕ
+      // используем глобальный `cancelAllScheduledNotificationsAsync`, чтобы не
+      // удалять другие запланированные уведомления приложения.
+      const requests = await Notifications.getAllScheduledNotificationsAsync();
+      for (const request of requests) {
+        if (isOurs(request.content.data)) {
+          await Notifications.cancelScheduledNotificationAsync(request.identifier);
+        }
+      }
     },
 
     async schedule(req: PlannedNotificationRequest): Promise<void> {
