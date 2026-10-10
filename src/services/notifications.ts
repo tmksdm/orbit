@@ -278,3 +278,39 @@ export function configureNotificationHandler(): void {
     }),
   });
 }
+
+/** Читает `data.url` ответа на уведомление; иначе null. */
+function responseUrl(response: Notifications.NotificationResponse): string | null {
+  const url = response.notification.request.content.data?.url;
+  return typeof url === 'string' ? url : null;
+}
+
+/**
+ * Забирает и ГАСИТ последний ответ на уведомление (§6.11): нажатие открывает
+ * главный экран. Возвращает `data.url` или null; последний ответ очищается,
+ * чтобы навигация не повторялась при следующих запусках.
+ */
+export function consumeLastNotificationUrl(): string | null {
+  const response = Notifications.getLastNotificationResponse();
+  if (response === null) {
+    return null;
+  }
+  const url = responseUrl(response);
+  Notifications.clearLastNotificationResponse();
+  return url;
+}
+
+/**
+ * Подписка на нажатие по уведомлению (§6.11). Возвращает функцию отписки.
+ * Изоляция нативного API — здесь (как и все прочие вызовы `expo-notifications`).
+ */
+export function subscribeToNotificationResponses(handler: (url: string) => void): () => void {
+  const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    const url = responseUrl(response);
+    if (url !== null) {
+      handler(url);
+    }
+  });
+  return () => subscription.remove();
+}
+

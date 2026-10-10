@@ -5,11 +5,12 @@
  */
 import { useEffect } from "react";
 import { AppState } from "react-native";
-import { Stack, SplashScreen } from "expo-router";
+import { router, Stack, SplashScreen } from "expo-router";
 import { useFonts } from "expo-font";
 import { Unbounded_500Medium, Unbounded_600SemiBold, Unbounded_700Bold } from "@expo-google-fonts/unbounded";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
 import { getNotificationServices, setupNotifications } from "../features/runtime";
+import { consumeLastNotificationUrl, subscribeToNotificationResponses } from "../services/notifications";
 import { colors } from "../ui/tokens";
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -48,6 +49,21 @@ export default function RootLayout() {
       }
     });
     return () => subscription.remove();
+  }, []);
+
+  // Навигация по нажатию на уведомление (§6.11): нажатие открывает главный экран
+  // («Пора связаться»). Не создаёт взаимодействий и не меняет интервалы.
+  useEffect(() => {
+    const openHome = (url: string) => {
+      if (url === "/") {
+        router.push("/");
+      }
+    };
+    const initial = consumeLastNotificationUrl();
+    if (initial !== null) {
+      openHome(initial);
+    }
+    return subscribeToNotificationResponses(openHome);
   }, []);
 
   if (!loaded && !error) {

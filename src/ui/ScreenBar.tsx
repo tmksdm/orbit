@@ -5,16 +5,19 @@
  */
 
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { ChevronLeftIcon } from "./icons";
+import { BellIcon, ChevronLeftIcon } from "./icons";
 import { colors, fontSize, radius, ripple, spacing } from "./tokens";
 
 interface ScreenBarProps {
   readonly title?: string;
   readonly subtitle?: string;
   readonly onBack?: () => void;
+  /** Иконка действия справа (Q4 — вход в настройки напоминаний). */
+  readonly onAction?: () => void;
+  readonly actionLabel?: string;
 }
 
-export function ScreenBar({ title, subtitle, onBack }: ScreenBarProps) {
+export function ScreenBar({ title, subtitle, onBack, onAction, actionLabel }: ScreenBarProps) {
   return (
     <View style={styles.bar}>
       <View style={styles.row}>
@@ -24,12 +27,24 @@ export function ScreenBar({ title, subtitle, onBack }: ScreenBarProps) {
             hitSlop={12}
             accessibilityLabel="Назад"
             android_ripple={ripple}
-            style={styles.backButton}
+            style={styles.iconButton}
           >
             <ChevronLeftIcon size={22} color={colors.ink} />
           </Pressable>
         )}
         {title !== undefined && <Text style={styles.title}>{title}</Text>}
+        <View style={styles.spacer} />
+        {onAction !== undefined && (
+          <Pressable
+            onPress={onAction}
+            hitSlop={12}
+            accessibilityLabel={actionLabel ?? "Действие"}
+            android_ripple={ripple}
+            style={styles.iconButton}
+          >
+            <BellIcon size={22} color={colors.ink} />
+          </Pressable>
+        )}
       </View>
       {subtitle !== undefined && <Text style={styles.subtitle}>{subtitle}</Text>}
     </View>
@@ -49,7 +64,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  backButton: {
+  spacer: {
+    flex: 1,
+  },
+  iconButton: {
     width: 40,
     height: 40,
     borderRadius: radius.sm,

@@ -89,13 +89,21 @@ export default function IndexScreen({
   const openAdd = useCallback(() => {
     router.push({ pathname: "/add-contact" });
   }, [router]);
+  const openSettings = useCallback(() => {
+    router.push({ pathname: "/settings" });
+  }, [router]);
 
   const hasData = status === "ready" && view !== null && view.total > 0;
 
   return (
     <View style={styles.screen}>
       <View style={{ paddingTop: insets.top }}>
-        <ScreenBar title="Orbit" subtitle={subtitleFor(status, view)} />
+        <ScreenBar
+          title="Orbit"
+          subtitle={subtitleFor(status, view)}
+          onAction={openSettings}
+          actionLabel="Напоминания"
+        />
       </View>
 
       {status === "loading" && <LoadingSkeleton />}
