@@ -636,3 +636,81 @@ describe("сохранность данных при ошибке sync (§10.9)"
     expect(syncResults[0]?.ok).toBe(false); // ошибка sync не откатила сохранение
   });
 });
+
+
+describe("Stage 4 §12 — покрытие сценариев автотестами (пересмотр объёма, 2026-10-10)", () => {
+  it("§12 п.10: согласование не создаёт взаимодействий и не меняет контакты/интервалы", async () => {
+    const h = makeHarness({
+      entries: [{ contact: contactDue("a", "2026-10-10"), due: "2026-10-10", interval: 2 }],
+      settings: { enabled: true, anchorDate: "2026-10-10" },
+    });
+    const contactsBefore = JSON.stringify(h.contactsStore);
+    const historyBefore = JSON.stringify([...h.interactionHistory.entries()]);
+
+    await h.services.syncNotifications();
+    await h.services.loadNotificationSettings();
+
+    expect(JSON.stringify(h.contactsStore)).toBe(contactsBefore);
+    expect(JSON.stringify([...h.interactionHistory.entries()])).toBe(historyBefore);
+  });
+
+  it("§12 п.13: отключение и повторное включение сохраняют anchor; пропущенные дни не догоняются", async () => {
+    const h = makeHarness({
+      entries: [{ contact: contactDue("a", "2026-10-09"), due: "2026-10-09", interval: 2 }],
+      settings: { enabled: true, anchorDate: "2026-10-10" },
+    });
+
+    const off = await h.services.setEnabled(false);
+    expect(off.status).toBe("saved");
+    expect(h.settings.get().anchorDate).toBe("2026-10-10");
+    expect(h.platform.scheduled).toHaveLength(0);
+
+    const on = await h.services.setEnabled(true);
+    expect(on.status).toBe("saved");
+    expect(h.settings.get().anchorDate).toBe("2026-10-10"); // anchor НЕ пересоздан
+    expect(h.platform.scheduled.every((s) => s.cycleDate >= "2026-10-10")).toBe(true);
+  });
+
+  it("§12 п.14: смена времени не сбрасывает anchor; прошедшее сегодня время → сегодня пусто", async () => {
+    const h = makeHarness({
+      entries: [{ contact: contactDue("a", "2026-10-10"), due: "2026-10-10", interval: 2 }],
+      settings: { enabled: true, anchorDate: "2026-10-10" },
+    });
+
+    const result = await h.services.setReminderTime("17:00"); // 17:00 < nowTime 18:00
+
+    expect(result.status).toBe("saved");
+    expect(h.settings.get().anchorDate).toBe("2026-10-10"); // anchor сохранён
+    expect(h.platform.scheduled.some((s) => s.cycleDate === "2026-10-10")).toBe(false);
+    expect(h.platform.scheduled.some((s) => s.cycleDate === "2026-10-13")).toBe(true);
+  });
+
+  it("§12 п.5: просрочено + время прошло → anchor = завтра (через use-case)", async () => {
+    const h = makeHarness({
+      entries: [{ contact: contactDue("a", "2026-10-09"), due: "2026-10-09", interval: 2 }],
+      settings: { enabled: false, anchorDate: null, reminderTime: "17:00" },
+    });
+
+    const result = await h.services.setEnabled(true);
+
+    expect(result.status).toBe("saved");
+    expect(h.settings.get().anchorDate).toBe("2026-10-11");
+    expect(h.platform.scheduled.some((s) => s.cycleDate === "2026-10-10")).toBe(false);
+  });
+
+  it("§12 п.18: план покрывает длительный горизонт (логический уровень автономности)", async () => {
+    const h = makeHarness({
+      entries: [{ contact: contactDue("a", "2026-10-09"), due: "2026-10-09", interval: 2 }],
+      settings: { enabled: true, anchorDate: "2026-10-10" },
+      horizonDays: 366,
+    });
+
+    const result = await h.services.syncNotifications();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.added).toBeGreaterThan(100);
+    const last = h.platform.scheduled[h.platform.scheduled.length - 1]!;
+    expect(last.cycleDate > "2027-09-01").toBe(true);
+  });
+});
