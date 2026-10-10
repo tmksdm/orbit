@@ -4,10 +4,12 @@
  * решение этапа реализации: официальные пакеты Expo Google Fonts + expo-font).
  */
 import { useEffect } from "react";
+import { AppState } from "react-native";
 import { Stack, SplashScreen } from "expo-router";
 import { useFonts } from "expo-font";
 import { Unbounded_500Medium, Unbounded_600SemiBold, Unbounded_700Bold } from "@expo-google-fonts/unbounded";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
+import { getNotificationServices, setupNotifications } from "../features/runtime";
 import { colors } from "../ui/tokens";
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -28,6 +30,25 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => undefined);
     }
   }, [loaded, error]);
+
+  // Напоминания Stage 4 (§6.7): обработчик показа в foreground настраивается один
+  // раз; согласование расписания запускается при старте и при возврате в foreground.
+  // Ошибки sync не влияют на UI (§6.9) — проглатываются.
+  useEffect(() => {
+    setupNotifications();
+    const sync = () => {
+      getNotificationServices()
+        .then((services) => services.syncNotifications())
+        .catch(() => undefined);
+    };
+    sync();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        sync();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   if (!loaded && !error) {
     return null;

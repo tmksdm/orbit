@@ -101,6 +101,12 @@ export interface OrbitServicesDeps {
   readonly recorder: InteractionRecorder;
   readonly clock: Clock;
   readonly createId: IdGenerator;
+  /**
+   * Необязательный хук после УСПЕШНОГО сохранения взаимодействия (Stage 4, §6.9):
+   * вызывает согласование напоминаний. Ошибка/отказ хука НЕ влияет на сохранность
+   * данных — вызывается в отдельном `try/catch` после коммита Stage 2.
+   */
+  readonly onInteractionRecorded?: () => Promise<unknown>;
 }
 
 /**
@@ -191,7 +197,7 @@ export function buildContactListView(params: {
 
 /** Собирает use-cases поверх портов Stage 2 и сервисов. */
 export function createOrbitServices(deps: OrbitServicesDeps): OrbitServices {
-  const { contacts, interactions, recorder, clock, createId } = deps;
+  const { contacts, interactions, recorder, clock, createId, onInteractionRecorded } = deps;
 
   async function loadHistoryForAll(
     list: readonly Contact[],
@@ -259,11 +265,21 @@ export function createOrbitServices(deps: OrbitServicesDeps): OrbitServices {
 
     async recordInteraction(contactId, input): Promise<Contact> {
       const occurredAt = clock.now();
-      return recorder.record(contactId, {
+      const updated = await recorder.record(contactId, {
         initiator: input.initiator,
         outcome: input.outcome,
         occurredAt,
       });
+      // §6.9: согласование напоминаний ПОСЛЕ успешного коммита, в отдельном
+      // try/catch — ошибка sync не откатывает и не дублирует взаимодействие.
+      if (onInteractionRecorded !== undefined) {
+        try {
+          await onInteractionRecorded();
+        } catch {
+          // намеренно проглатывается: сохранность взаимодействия важнее sync
+        }
+      }
+      return updated;
     },
   };
 }

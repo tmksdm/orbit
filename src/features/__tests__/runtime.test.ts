@@ -4,8 +4,10 @@
  * REVIEW-03: отклонённый промис инициализации НЕ должен навсегда оставаться в
  * кеше — после ошибки следующий вызов повторяет попытку; при успешном запуске
  * инициализация выполняется ровно один раз (общий промис на всех вызывающих).
- * `openOrbitDatabase` и platform-сервисы (clock/uuid) подменяются.
+ * Stage 4: `getOrbitServices`/`getNotificationServices` делят одну инициализацию
+ * (одно открытие БД). `openOrbitDatabase` и platform-сервисы подменяются.
  */
+import type { NotificationServices } from "../notificationServices";
 import type { OrbitServices } from "../orbitServices";
 
 jest.mock("../../data", () => ({ openOrbitDatabase: jest.fn() }));
@@ -15,11 +17,18 @@ jest.mock("../../services/clock", () => ({
     today: () => "2026-10-08",
     toLocalDate: (iso: string) => iso.slice(0, 10),
   },
+  toLocalTime: () => "00:00",
+  combineLocalDateTime: (date: string, time: string) => new Date(`${date}T${time}:00.000Z`),
 }));
 jest.mock("../../services/uuid", () => ({ createUuid: () => "id-1" }));
+jest.mock("../../services/notifications", () => ({
+  createNotificationPlatform: () => ({}),
+  configureNotificationHandler: () => undefined,
+}));
 
 interface RuntimeModule {
   getOrbitServices: () => Promise<OrbitServices>;
+  getNotificationServices: () => Promise<NotificationServices>;
 }
 
 /** Свежий экземпляр замоканного слоя данных (после `jest.resetModules`). */
@@ -27,12 +36,12 @@ function dataModule(): { openOrbitDatabase: jest.Mock } {
   return jest.requireMock<{ openOrbitDatabase: jest.Mock }>("../../data");
 }
 
-/** Свежий экземпляр модуля runtime (сбрасывает внутренний кеш промиса). */
+/** Свежий экземпляр модуля runtime (сбрасывает внутренние кеши промисов). */
 function freshRuntime(): RuntimeModule {
   return jest.requireActual<RuntimeModule>("../runtime");
 }
 
-const fakeData = { contacts: {}, interactions: {}, recorder: {} };
+const fakeData = { contacts: {}, interactions: {}, recorder: {}, notificationSettings: {} };
 
 describe("runtime.getOrbitServices (REVIEW-03)", () => {
   beforeEach(() => {
@@ -61,6 +70,20 @@ describe("runtime.getOrbitServices (REVIEW-03)", () => {
     const second = getOrbitServices();
     expect(second).toBe(first);
     await expect(first).resolves.toBeDefined();
+    expect(data.openOrbitDatabase).toHaveBeenCalledTimes(1);
+  });
+
+  it("getOrbitServices и getNotificationServices делят одну инициализацию (Stage 4)", async () => {
+    const data = dataModule();
+    data.openOrbitDatabase.mockResolvedValue(fakeData);
+    const runtime = freshRuntime();
+
+    const orbit = await runtime.getOrbitServices();
+    const notifications = await runtime.getNotificationServices();
+
+    expect(orbit).toBeDefined();
+    expect(notifications).toBeDefined();
+    expect(orbit).not.toBe(notifications);
     expect(data.openOrbitDatabase).toHaveBeenCalledTimes(1);
   });
 });

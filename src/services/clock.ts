@@ -77,6 +77,17 @@ export function combineLocalDateTime(date: string, time: string): Date {
   return new Date(year, month - 1, day, hours, minutes, 0, 0);
 }
 
+/** Локальное время суток (HH:MM) момента ISO 8601 в зоне устройства. */
+export function toLocalTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`Invalid ISO 8601 moment: ${iso}`);
+  }
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 /** Продовый источник времени: системные часы устройства. */
 export const systemClock: Clock = {
   now: () => new Date().toISOString(),
