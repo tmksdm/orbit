@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Orbit PWA — прототип</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #0b1220; color: #e6edf7; }
+      h1 { font-size: 20px; }
+      button { padding: 10px 16px; border-radius: 10px; border: 0; background: #208aef; color: #fff; font-size: 15px; }
+      .card { background: #121a2b; border-radius: 12px; padding: 16px; margin-top: 12px; }
+      .muted { color: #8b98ad; font-size: 13px; }
+      #log { white-space: pre-wrap; font-size: 12px; color: #9fb4d0; }
+    </style>
+  </head>
+  <body>
+    <h1>Orbit — PWA-прототип (без backend)</h1>
+    <p class="muted">Экран + локальное хранение (localStorage) + попытка запланировать локальное уведомление.</p>
+    <div class="card">
+      <div id="count">Контактов: 0</div>
+      <p><button id="add">Добавить контакт</button> <button id="schedule">Запланировать напоминание</button></p>
+      <div id="log"></div>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>

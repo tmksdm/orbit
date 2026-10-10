@@ -11,7 +11,7 @@ const expoEntries = Array.isArray(expoConfig) ? expoConfig : [expoConfig];
 
 module.exports = [
   {
-    ignores: ['node_modules/', '.expo/', 'android/', 'ios/', 'coverage/', 'dist/', '.sync/'],
+    ignores: ['node_modules/', '.expo/', 'android/', 'ios/', 'coverage/', 'dist/', '.sync/', 'experiments/'],
   },
   ...expoEntries,
   prettierConfig,
